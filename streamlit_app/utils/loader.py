@@ -1,0 +1,96 @@
+"""
+loader.py — utilities for reading experiment outputs from disk.
+"""
+
+import json
+import re
+from pathlib import Path
+
+import yaml
+
+# Navigate from streamlit_app/utils/ up two levels to the project root.
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+
+
+def get_experiments() -> list[dict]:
+    """
+    Return all experiment directories under data/output/, sorted newest first.
+
+    Each item:  {"path": Path, "name": str, "timestamp": str}
+    """
+    output_dir = PROJECT_ROOT / "data" / "output"
+    if not output_dir.exists():
+        return []
+
+    experiments = []
+    for d in sorted(output_dir.iterdir(), reverse=True):
+        if not d.is_dir():
+            continue
+        # Extract timestamp: last two segments separated by _ (YYYYMMDD_HHMMSS)
+        m = re.search(r"(\d{8}_\d{6})$", d.name)
+        timestamp = m.group(1).replace("_", " ") if m else d.name
+        experiments.append({"path": d, "name": d.name, "timestamp": timestamp})
+    return experiments
+
+
+def get_patients(experiment_dir: Path) -> list[dict]:
+    """
+    Return patient result files inside *experiment_dir*.
+
+    Each item:  {"path": Path, "patient_id": str}
+    """
+    patients = []
+    for json_file in sorted(experiment_dir.glob("experiment_*.json")):
+        if json_file.name.endswith("_summary.json"):
+            continue
+        m = re.search(r"experiment_(\w+)\.json$", json_file.name)
+        patient_id = m.group(1) if m else json_file.stem
+        patients.append({"path": json_file, "patient_id": patient_id})
+    return patients
+
+
+def load_patient(json_path: Path) -> dict:
+    """Load and return the patient result JSON as a dict."""
+    with open(json_path, "r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def load_log(experiment_dir: Path) -> list[str]:
+    """Read simulation.log and return its lines."""
+    log_path = experiment_dir / "simulation.log"
+    if not log_path.exists():
+        return []
+    with open(log_path, "r", encoding="utf-8") as fh:
+        return [line.rstrip("\n") for line in fh.readlines()]
+
+
+def load_config() -> dict:
+    """Load configs/simulation_config.yaml. Returns {} if missing."""
+    config_path = PROJECT_ROOT / "configs" / "simulation_config.yaml"
+    if not config_path.exists():
+        return {}
+    with open(config_path, "r", encoding="utf-8") as fh:
+        return yaml.safe_load(fh) or {}
+
+
+def get_context_files(experiment_dir: Path, patient_id: str) -> list[dict]:
+    """
+    Load all per-call context JSON files for *patient_id*.
+
+    Each item:  {"filename": str, "data": dict}
+    """
+    context_dir = experiment_dir / "context" / f"patient_{patient_id}"
+    if not context_dir.exists():
+        context_dir = experiment_dir / "context"
+    if not context_dir.exists():
+        return []
+
+    results = []
+    for json_file in sorted(context_dir.glob("*.json")):
+        try:
+            with open(json_file, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+        except (json.JSONDecodeError, OSError):
+            data = {}
+        results.append({"filename": json_file.name, "data": data})
+    return results
