@@ -1,0 +1,147 @@
+{
+  "patient_id": 1,
+  "experiment_timestamp": "2026-04-14 11:39:26",
+  "config": {
+    "pipeline": "vignette_full",
+    "models": {
+      "vignette_crafter": "deepseek-chat",
+      "validator": "deepseek-chat"
+    },
+    "temperature": 0.7,
+    "max_retries": 2,
+    "self_report_items": 3,
+    "use_formulation": true,
+    "seed": 30
+  },
+  "demographics": {
+    "age": 26,
+    "gender": "Male",
+    "nationality": "Oceania",
+    "relationship_status": "Single",
+    "trauma_type": "Life threat",
+    "pcl5": 48
+  },
+  "self_report": {
+    "Triggers": [
+      {
+        "key": "Olfactory (Alcohol)",
+        "value": "Alcohol smell"
+      },
+      {
+        "key": "Olfactory Danger Cue",
+        "value": "Burnt smell"
+      },
+      {
+        "key": "Auditory (Babies)",
+        "value": "Babies"
+      }
+    ],
+    "Threat": [
+      {
+        "key": "Flashbacks",
+        "value": "Suddenly feeling or acting as if the stressful experience were actually happening again"
+      },
+      {
+        "key": "Physical Reactivity",
+        "value": "Having strong physical reactions when something reminded you of the stressful experience"
+      },
+      {
+        "key": "Negative Emotions",
+        "value": "Having strong negative feelings such as fear, horror, anger, guilt, or shame"
+      }
+    ],
+    "Negative Appraisals": [
+      {
+        "key": "Self-Blame",
+        "value": "The event happened because of the way I acted"
+      },
+      {
+        "key": "Self-Doubt",
+        "value": "I can't trust that I will do the right thing"
+      },
+      {
+        "key": "Weakness Belief",
+        "value": "I am a weak person"
+      }
+    ],
+    "Memory": [
+      {
+        "key": "Visual Memories",
+        "value": "My memories of the frightening event are mostly pictures or images."
+      },
+      {
+        "key": "Nonverbal Memory",
+        "value": "I can't seem to put the frightening event into words."
+      },
+      {
+        "key": "Auditory Recall",
+        "value": "When I have memories of what happened I sometimes hear things in my head that I heard during the frightening event."
+      }
+    ],
+    "Maladaptive Strategies": [
+      {
+        "key": "Suppress Thoughts",
+        "value": "try hard not think about the trauma"
+      },
+      {
+        "key": "Mental Distraction",
+        "value": "keep mind occupied all the time"
+      },
+      {
+        "key": "Emotion Control",
+        "value": "I try hard to control my emotions"
+      }
+    ]
+  },
+  "agg_edges": {
+    "Triggers -- Maladaptive Strategies": 0.0,
+    "Triggers -- Threat": 0.125,
+    "Triggers -- Memory": 0.0,
+    "Triggers -- Negative Appraisals": 0.1339285714285715,
+    "Negative Appraisals -- Maladaptive Strategies": 0.0,
+    "Negative Appraisals -- Threat": 0.9375,
+    "Negative Appraisals -- Memory": 0.0,
+    "Negative Appraisals -- Triggers": 0.0,
+    "Memory -- Maladaptive Strategies": 0.0,
+    "Memory -- Threat": 0.625,
+    "Memory -- Negative Appraisals": 0.3214285714285715,
+    "Memory -- Triggers": 0.0,
+    "Threat -- Maladaptive Strategies": 0.2291666666666667,
+    "Threat -- Memory": 0.0,
+    "Threat -- Negative Appraisals": 0.0,
+    "Threat -- Triggers": 0.0,
+    "Maladaptive Strategies -- Memory": 0,
+    "Maladaptive Strategies -- Negative Appraisals": 0
+  },
+  "input_validation_attempts": [
+    {
+      "attempt": 1,
+      "passed": false,
+      "reasoning": "The trauma type is suicide, but the triggers include auditory (babies) and olfactory (alcohol, burnt smell) which are not plausibly connected to suicide trauma, and the PCL-5 score of 46 (moderate-severe) is inconsistent with the weak edge strengths (mostly 0.12-0.32) and lack of strong activation in the cognitive model."
+    },
+    {
+      "attempt": 2,
+      "passed": false,
+      "reasoning": "The PCL-5 score of 74 indicates extreme severity, but the edge strengths from Triggers to downstream components are implausibly weak (0.12, 0.13) for such a high score, and the triggers listed (e.g., Babies, Burnt smell) are not clearly linked to an interpersonal trauma for an 80-year-old widowed female."
+    },
+    {
+      "attempt": 3,
+      "passed": false,
+      "reasoning": "The trauma type 'Life threat' is too vague to assess trigger plausibility, and the triggers listed (Alcohol smell, Burnt smell, Babies) do not clearly connect to a life-threatening event, making the clinical picture inconsistent."
+    }
+  ],
+  "validation_summary": {
+    "attempts": 2,
+    "passed": 0,
+    "failed": 2,
+    "ultimately_passed": false
+  },
+  "vignette": "**Clinical Vignette**\n\nLiam, a 26-year-old single man from New Zealand, presents with significant distress following a life-threatening assault two years ago. His world has since contracted under the weight of a pervasive sense of threat. He describes a state of constant vigilance, believing he must be \"especially careful because you never know what can happen next.\" This fundamental appraisal that the world is unpredictable and dangerous is powerfully activated by specific triggers, such as arguments or any situation where he feels his autonomy is being stripped away. When confronted with these triggers, his sense of self-doubt intensifies—he feels he \"can't deal with even the slightest upset\"—and his body immediately reacts with a surge of irritability and strong physical reactivity, his heart pounding as if the danger were present.\n\nThe traumatic event itself remains vividly and intrusively present. Liam’s memories are not narratives but sensory fragments: overwhelming visual images and, at times, the sudden, unbidden return of smells from that night. When these memories surface, he feels as if he is reliving the event in the present moment. This visceral re-experiencing directly fuels his feeling of being under threat and reinforces his negative belief that he is fundamentally incapable of coping.\n\nTo manage this exhausting state of hyperarousal, which includes significant sleep problems, Liam has adopted several maladaptive strategies. He actively avoids places and people associated with the trauma, particularly the police. In social situations, he often looks down to avoid eye contact, and he reports using alcohol and medication to numb his pervasive anxiety and irritability. These strategies are a direct, if costly, attempt to dampen the acute threat he feels constantly simmering beneath the surface.\n\nConsequently, Liam’s life is characterised by isolation and a profound loss of confidence. His relationships are strained by his irritability and avoidance, and his belief in his own competence has been severely eroded. The maintaining factors of his condition are clear: intrusive, sense-laden memories and situation-specific triggers perpetuate a cycle of negative appraisal and heightened threat, from which his only respite is through avoidance and substance use, further entrenching his difficulties."
+,
+
+  "vignette_attempts": [
+    {"vignette": "**Clinical Vignette**\n\nLiam, a 26-year-old single man from New Zealand, presents with significant distress following a life-threatening assault two years ago. His world has since contracted under the weight of a pervasive sense of threat. He describes a state of constant vigilance, believing he must be \"especially careful because you never know what can happen next.\" This fundamental appraisal that the world is unpredictable and dangerous is powerfully activated by specific triggers, such as arguments or any situation where he feels his autonomy is being stripped away. When confronted with these triggers, his sense of self-doubt intensifies—he feels he \"can't deal with even the slightest upset\"—and his body immediately reacts with a surge of irritability and strong physical reactivity, his heart pounding as if the danger were present.\n\nThe traumatic event itself remains vividly and intrusively present. Liam’s memories are not narratives but sensory fragments: overwhelming visual images and, at times, the sudden, unbidden return of smells from that night. When these memories surface, he feels as if he is reliving the event in the present moment. This visceral re-experiencing directly fuels his feeling of being under threat and reinforces his negative belief that he is fundamentally incapable of coping. The cycle is relentless: a trigger or a memory sparks appraisals of helplessness, which in turn amplifies his physiological and emotional threat response.\n\nTo manage this exhausting state of hyperarousal, which includes significant sleep problems, Liam has adopted several maladaptive strategies. He actively avoids places and people associated with the trauma, particularly the police. In social situations, he often looks down to avoid eye contact, and he reports using alcohol and medication to numb his pervasive anxiety and irritability. These strategies are a direct, if costly, attempt to dampen the acute threat he feels constantly simmering beneath the surface.\n\nConsequently, Liam’s life is characterised by isolation and a profound loss of confidence. His relationships are strained by his irritability and avoidance, and his belief in his own competence has been severely eroded. The maintaining factors of his condition are clear: intrusive, sense-laden memories and situation-specific triggers perpetuate a cycle of negative appraisal and heightened threat, from which his only respite is through avoidance and substance use, further entrenching his difficulties.", "passed": false, "feedback": "The vignette contains the forbidden edge 'Threat → Negative Appraisals' where the threat response amplifies negative appraisals ('his sense of self-doubt intensifies'), and also implies 'Threat → Memory' through the cycle description where threat maintains the memory intrusions."},
+
+    {"vignette": "**Clinical Vignette**\n\nLiam, a 26-year-old single man from New Zealand, presents with significant distress following a life-threatening assault two years ago. His world has since contracted under the weight of a pervasive sense of threat. He describes a state of constant vigilance, believing he must be \"especially careful because you never know what can happen next.\" This fundamental appraisal that the world is unpredictable and dangerous is powerfully activated by specific triggers, such as arguments or any situation where he feels his autonomy is being stripped away. When confronted with these triggers, his sense of self-doubt intensifies—he feels he \"can't deal with even the slightest upset\"—and his body immediately reacts with a surge of irritability and strong physical reactivity, his heart pounding as if the danger were present.\n\nThe traumatic event itself remains vividly and intrusively present. Liam’s memories are not narratives but sensory fragments: overwhelming visual images and, at times, the sudden, unbidden return of smells from that night. When these memories surface, he feels as if he is reliving the event in the present moment. This visceral re-experiencing directly fuels his feeling of being under threat and reinforces his negative belief that he is fundamentally incapable of coping.\n\nTo manage this exhausting state of hyperarousal, which includes significant sleep problems, Liam has adopted several maladaptive strategies. He actively avoids places and people associated with the trauma, particularly the police. In social situations, he often looks down to avoid eye contact, and he reports using alcohol and medication to numb his pervasive anxiety and irritability. These strategies are a direct, if costly, attempt to dampen the acute threat he feels constantly simmering beneath the surface.\n\nConsequently, Liam’s life is characterised by isolation and a profound loss of confidence. His relationships are strained by his irritability and avoidance, and his belief in his own competence has been severely eroded. The maintaining factors of his condition are clear: intrusive, sense-laden memories and situation-specific triggers perpetuate a cycle of negative appraisal and heightened threat, from which his only respite is through avoidance and substance use, further entrenching his difficulties.", "passed": false, "feedback": "The vignette contains the forbidden edge 'Threat → Negative Appraisals' where the text states 'his sense of self-doubt intensifies' (negative appraisal) when 'confronted with these triggers' (threat activation), implying threat causes negative appraisals."}
+  ]
+}

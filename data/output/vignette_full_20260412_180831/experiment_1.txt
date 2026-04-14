@@ -1,0 +1,198 @@
+PATIENT 1  |  2026-04-12 18:09:30
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+CONFIG
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  pipeline:    vignette_full
+  temperature: 0.7
+  max_retries: 2
+  seed:        30
+  models:
+    vignette_crafter     gpt-4o-mini
+    validator            gpt-4o-mini
+
+DEMOGRAPHICS
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  age             26
+  gender          Male
+  nationality     Oceania
+  relationship_status Single
+  trauma_type     Life threat
+  pcl5            48
+
+SELF-REPORT
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  Triggers:
+    • Olfactory (Alcohol): Alcohol smell
+    • Olfactory Danger Cue: Burnt smell
+    • Auditory (Babies): Babies
+  Threat:
+    • Flashbacks: Suddenly feeling or acting as if the stressful experience were actually happening again
+    • Physical Reactivity: Having strong physical reactions when something reminded you of the stressful experience
+    • Negative Emotions: Having strong negative feelings such as fear, horror, anger, guilt, or shame
+  Negative Appraisals:
+    • Self-Blame: The event happened because of the way I acted
+    • Self-Doubt: I can't trust that I will do the right thing
+    • Weakness Belief: I am a weak person
+  Memory:
+    • Visual Memories: My memories of the frightening event are mostly pictures or images.
+    • Nonverbal Memory: I can't seem to put the frightening event into words.
+    • Auditory Recall: When I have memories of what happened I sometimes hear things in my head that I heard during the frightening event.
+  Maladaptive Strategies:
+    • Suppress Thoughts: try hard not think about the trauma
+    • Mental Distraction: keep mind occupied all the time
+    • Emotion Control: I try hard to control my emotions
+
+AGGREGATED EMA EDGES
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  Triggers → Maladaptive Strategies                  0.0000
+  Triggers → Threat                                  0.1250
+  Triggers → Memory                                  0.0000
+  Triggers → Negative Appraisals                     0.1339
+  Negative Appraisals → Maladaptive Strategies       0.0000
+  Negative Appraisals → Threat                       0.9375
+  Negative Appraisals → Memory                       0.0000
+  Negative Appraisals → Triggers                     0.0000
+  Memory → Maladaptive Strategies                    0.0000
+  Memory → Threat                                    0.6250
+  Memory → Negative Appraisals                       0.3214
+  Memory → Triggers                                  0.0000
+  Threat → Maladaptive Strategies                    0.2292
+  Threat → Memory                                    0.0000
+  Threat → Negative Appraisals                       0.0000
+  Threat → Triggers                                  0.0000
+  Maladaptive Strategies → Memory                    0.0000
+  Maladaptive Strategies → Negative Appraisals       0.0000
+
+INPUT VALIDATION
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  [1] FAIL  —  The sampled self-report items for triggers related to alcohol and babies are inconsistent with the trauma type of suicide, suggesting a lack of relevant triggers. Additionally, the PCL-5 score of 46 does not align well with the overall low edge strengths, indicating potential discrepancies in severity versus cognitive model density.
+  [2] FAIL  —  The sampled self-report items for triggers, especially the olfactory cues related to alcohol and burnt smells, do not align with the interpersonal trauma type; typically, interpersonal trauma would have more relational or emotional triggers rather than solely sensory ones. Additionally, the PCL-5 score of 74 suggests high severity, yet several edge strengths are relatively low, indicating a potential mismatch in severity and cognitive model density.
+  [3] FAIL  —  The sampled triggers related to olfactory and auditory cues do not align well with the trauma type of life threat, which typically involves more direct and relevant triggers. Additionally, the edge strengths do not support the PCL-5 score of 48, as they suggest weaker connections overall.
+
+VALIDATION SUMMARY
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  2 attempt(s)  →  FAIL
+
+VIGNETTE ATTEMPTS
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+  [1] FAIL
+At 54 years old, this non-binary individual navigates life in the shadow of a traumatic past that
+has left them feeling profoundly isolated. They are a South Asian person, widowed and grappling with
+the aftermath of a violent incident that has forever altered their reality. Every day, simple sounds
+can trigger an avalanche of memories—car engines rumbling in the distance evoke a sense of dread,
+while the harshness of shouting in Arabic stirs a visceral response that pulls them back into their
+trauma. Even the barking of dogs can send a shiver down their spine, reminding them of a time when
+safety felt like a distant dream.
+
+In the aftermath of their trauma, they have developed coping mechanisms that often feel like a
+double-edged sword. They instinctively avoid situations that might bring forth strong emotions,
+steering clear of police presence, hospitals, and even the sound of ambulances. This self-imposed
+isolation has reinforced their belief that they cannot manage even the slightest upset, leading to a
+pervasive sense of distrust towards others. They grapple with the feeling that people are not what
+they seem, a notion that further alienates them from potential connections and support.
+
+Memories of the traumatic event are etched in their mind with a clarity that is both haunting and
+overwhelming. They often find themselves experiencing flashbacks, feeling as if they are reliving
+those moments, which heightens their irritability and makes them easily startled. These vivid
+recollections manifest as snapshots, each moment crystallized like photographs that they cannot put
+away, and they struggle with the emotional weight of these memories. The toll this takes on their
+daily life is significant; they often feel on edge, unable to relax or find solace in the world
+around them.
+
+As they navigate their day-to-day existence, the interplay of their triggers and negative appraisals
+creates a cycle that is difficult to escape. Every unexpected sound or provocative scene seems to
+reaffirm their worst fears, perpetuating a sense of threat that looms large. This has led to a
+reliance on maladaptive strategies, where avoidance becomes a means of survival, yet ultimately
+isolates them further. They long for connection but feel ensnared by their own mind, trapped in a
+web of memories and fears that prevent them from engaging fully with the world.
+
+In the quiet moments, they reflect on the life they once had, a life filled with warmth and
+companionship. Now, each day feels like a struggle against an unseen adversary, one that whispers
+doubts about their ability to cope and fosters a longing for a sense of normalcy that feels
+perpetually out of reach. The weight of their trauma is heavy, shaping their identity and
+influencing how they interact with those around them, leaving them caught between a desire for
+healing and the fear of what that journey may entail.
+
+  Feedback: The vignette contains the forbidden edge 'Negative Appraisals → Maladaptive Strategies', as their
+negative beliefs about managing emotions lead to avoidance strategies.
+
+  [2] FAIL
+At 54 years old, this non-binary individual navigates life in the shadow of a traumatic past that
+has left them feeling profoundly isolated. They are a South Asian person, widowed and grappling with
+the aftermath of a violent incident that has forever altered their reality. Every day, simple sounds
+can trigger an avalanche of memories—car engines rumbling in the distance evoke a sense of dread,
+while the harshness of shouting in Arabic stirs a visceral response that pulls them back into their
+trauma. Even the barking of dogs can send a shiver down their spine, reminding them of a time when
+safety felt like a distant dream.
+
+In the aftermath of their trauma, they have developed coping mechanisms that often feel like a
+double-edged sword. They instinctively avoid situations that might bring forth strong emotions,
+steering clear of police presence, hospitals, and even the sound of ambulances. This self-imposed
+isolation has led to a pervasive sense of distrust towards others. They grapple with the feeling
+that people are not what they seem, a notion that further alienates them from potential connections
+and support.
+
+Memories of the traumatic event are etched in their mind with a clarity that is both haunting and
+overwhelming. They often find themselves experiencing flashbacks, feeling as if they are reliving
+those moments, which heightens their irritability and makes them easily startled. These vivid
+recollections manifest as snapshots, each moment crystallized like photographs that they cannot put
+away, and they struggle with the emotional weight of these memories. The toll this takes on their
+daily life is significant; they often feel on edge, unable to relax or find solace in the world
+around them.
+
+As they navigate their day-to-day existence, the interplay of their triggers and negative appraisals
+creates a cycle that is difficult to escape. Every unexpected sound or provocative scene seems to
+reaffirm their worst fears, perpetuating a sense of threat that looms large. They long for
+connection but feel ensnared by their own mind, trapped in a web of memories and fears that prevent
+them from engaging fully with the world.
+
+In the quiet moments, they reflect on the life they once had, a life filled with warmth and
+companionship. Now, each day feels like a struggle against an unseen adversary, one that whispers
+doubts about their ability to cope and fosters a longing for a sense of normalcy that feels
+perpetually out of reach. The weight of their trauma is heavy, shaping their identity and
+influencing how they interact with those around them, leaving them caught between a desire for
+healing and the fear of what that journey may entail.
+
+  Feedback: The vignette contains the forbidden edge 'Triggers → Negative Appraisals,' as it describes the
+interplay of triggers and negative appraisals creating a cycle of threat, which implies that
+triggers cause negative appraisals.
+
+VIGNETTE (final)
+────────────────────────────────────────────────────────────────────────────────────────────────────
+At 54 years old, this non-binary individual navigates life in the shadow of a traumatic past that
+has left them feeling profoundly isolated. They are a South Asian person, widowed and grappling with
+the aftermath of a violent incident that has forever altered their reality. Every day, simple sounds
+can trigger an avalanche of memories—car engines rumbling in the distance evoke a sense of dread,
+while the harshness of shouting in Arabic stirs a visceral response that pulls them back into their
+trauma. Even the barking of dogs can send a shiver down their spine, reminding them of a time when
+safety felt like a distant dream.
+
+In the aftermath of their trauma, they have developed coping mechanisms that often feel like a
+double-edged sword. They instinctively avoid situations that might bring forth strong emotions,
+steering clear of police presence, hospitals, and even the sound of ambulances. This self-imposed
+isolation has led to a pervasive sense of distrust towards others. They grapple with the feeling
+that people are not what they seem, a notion that further alienates them from potential connections
+and support.
+
+Memories of the traumatic event are etched in their mind with a clarity that is both haunting and
+overwhelming. They often find themselves experiencing flashbacks, feeling as if they are reliving
+those moments, which heightens their irritability and makes them easily startled. These vivid
+recollections manifest as snapshots, each moment crystallized like photographs that they cannot put
+away, and they struggle with the emotional weight of these memories. The toll this takes on their
+daily life is significant; they often feel on edge, unable to relax or find solace in the world
+around them.
+
+As they navigate their day-to-day existence, they find themselves trapped in a cycle that is
+difficult to escape. Every unexpected sound or provocative scene seems to reaffirm their worst
+fears, perpetuating a sense of threat that looms large. They long for connection but feel ensnared
+by their own mind, caught in a web of memories and fears that prevent them from engaging fully with
+the world.
+
+In the quiet moments, they reflect on the life they once had, a life filled with warmth and
+companionship. Now, each day feels like a struggle against an unseen adversary, one that whispers
+doubts about their ability to cope and fosters a longing for a sense of normalcy that feels
+perpetually out of reach. The weight of their trauma is heavy, shaping their identity and
+influencing how they interact with those around them, leaving them caught between a desire for
+healing and the fear of what that journey may entail.

@@ -45,6 +45,10 @@ def _build_patient_table(experiment_dir: Path) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+from utils.loader import PROJECT_ROOT
+st.write("DEBUG — PROJECT_ROOT:", str(PROJECT_ROOT))
+st.write("DEBUG — output_dir exists:", (PROJECT_ROOT / "data" / "output").exists())
+
 experiments = get_experiments()
 
 if not experiments:

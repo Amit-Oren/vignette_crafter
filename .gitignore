@@ -222,11 +222,7 @@ ptsd_simulation/
 .vscode/
 .idea/
 
-# Experiment outputs
-data/output/
-
 # Project — sensitive / generated data
-data/output/
 data/preprosscing/
 
 # API keys / secrets
