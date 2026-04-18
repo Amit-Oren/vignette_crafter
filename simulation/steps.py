@@ -3,96 +3,81 @@ Pipeline step functions for vignette creation and validation.
 Each step receives/returns a state dict.
 """
 import logging
-from pydantic import BaseModel
-from typing import Literal
 from agents.vignette_crafter_agent import VignetteCrafterAgent
 from agents.zero_shot_vignette_agent import ZeroShotVignetteAgent
 from agents.validator_agent import ValidatorAgent
 from agents.persona_crafter_agent import PersonaCrafterAgent
-from configs.prompts import VALIDATOR_INPUTS_PROMPT
-from data.input.input import extract_aggregated_edges, get_demographics, get_self_report
+from agents.persona_validator_agent import PersonaValidatorAgent
+from data.input.input import (extract_aggregated_edges, get_demographics, get_self_report,
+                              sample_self_report, resample_demographics_fields)
 
 logger = logging.getLogger(__name__)
 
 
-class _InputValidationResult(BaseModel):
-    verdict:   Literal["PASS", "FAIL"]
-    reasoning: str
-
-
-def _format_edges(agg_edges: dict) -> str:
-    lines = [
-        f"  {p} → {c}: {v:.2f}"
-        for (p, c), v in agg_edges.items() if v > 0
-    ]
-    return "\n".join(lines) or "  (none)"
-
-
-def _format_self_report(self_report: dict) -> str:
-    lines = []
-    for node, items in self_report.items():
-        formatted = ", ".join(
-            f"{i['key']}: {i['value']}" if isinstance(i, dict) else str(i)
-            for i in items
-        )
-        lines.append(f"  {node}: {formatted}")
-    return "\n".join(lines)
-
-
-def _format_demographics(demo: dict) -> str:
-    return "\n".join(f"  {k}: {v}" for k, v in demo.items())
-
-
-def step_craft_persona(label: str, patient_id, llm, max_retries: int, n_items: int = 3) -> dict:
-    """Sample demographics randomly, then use LLM (persona crafter) to select
-    coherent self-report items. Validates the result and resamples demographics
-    + re-selects on failure up to max_retries times.
+def step_craft_persona(label: str, patient_id, llms: dict, max_retries: int, n_items: int = 3) -> dict:
+    """Two-stage persona construction with independent retry loops:
+      Stage 1 — Sample demographics, validate for internal consistency. Retry on FAIL.
+      Stage 2 — PersonaCrafter selects self-report, validate alignment. Retry selection on FAIL.
     """
     agg_edges    = extract_aggregated_edges(patient_id)
     active_nodes = [node for (p, c), w in agg_edges.items() if w > 0 for node in (p, c)]
     active_nodes = list(dict.fromkeys(active_nodes))  # deduplicate, preserve order
 
-    structured_llm = llm.with_structured_output(_InputValidationResult)
-    attempts = []
+    persona_validator = PersonaValidatorAgent(
+        name=f"{label}_PersonaValidator", role="PersonaValidator", llm=llms["persona_validator"]
+    )
+
+    # ── Stage 1: random demographics sample, then targeted field fixes ───────
+    demographics_attempts = []
+    demographics = get_demographics(patient_id)  # random initial sample
 
     for attempt in range(max_retries + 1):
-        # Step 1: sample random demographic anchors
-        demographics = get_demographics(patient_id)
-
-        # Step 2: PersonaCrafterAgent selects coherent self-report items
-        persona_crafter = PersonaCrafterAgent(
-            name=f"{label}_PersonaCrafter", role="PersonaCrafter", llm=llm,
-            active_nodes=active_nodes, demographics=demographics, agg_edges=agg_edges,
-            n_items=n_items,
-        )
-        self_report = persona_crafter.select()
-
-        # Step 3: lightweight structural validation
-        prompt = VALIDATOR_INPUTS_PROMPT.format(
-            demographics=_format_demographics(demographics),
-            edges=_format_edges(agg_edges),
-            self_report=_format_self_report(self_report),
-        )
-        result: _InputValidationResult = structured_llm.invoke([
-            {"role": "user", "content": prompt},
-        ])
-
-        passed = result.verdict == "PASS"
-        attempts.append({"attempt": attempt + 1, "passed": passed, "reasoning": result.reasoning})
-        logger.info("[%s] input validation attempt %d: %s — %s",
-                    label, attempt + 1, result.verdict, result.reasoning)
-
-        if passed:
+        result = persona_validator.validate_demographics(demographics)
+        demographics_attempts.append({
+            "attempt":            attempt + 1,
+            "passed":             result["passed"],
+            "issues":             result["issues"],
+            "problematic_fields": result["problematic_fields"],
+        })
+        if result["passed"]:
+            logger.info("[%s] demographics PASS on attempt %d", label, attempt + 1)
             break
-        if attempt < max_retries:
-            logger.warning("[%s] re-sampling demographics and re-selecting self-report (attempt %d/%d)",
-                           label, attempt + 1, max_retries)
+        logger.warning("[%s] demographics FAIL on attempt %d/%d — fixing fields: %s",
+                       label, attempt + 1, max_retries + 1, result["problematic_fields"])
+        demographics = resample_demographics_fields(demographics, result["problematic_fields"])
+
+    # ── Stage 2: random self-report sample, then targeted fixes ──────────────
+    selfreport_attempts = []
+    self_report = sample_self_report(active_nodes, n_items)  # random initial sample
+    persona_crafter = PersonaCrafterAgent(
+        name=f"{label}_PersonaCrafter", role="PersonaCrafter", llm=llms["persona_crafter"],
+        active_nodes=active_nodes, n_items=n_items,
+    )
+
+    for attempt in range(max_retries + 1):
+        result = persona_validator.validate_self_report(demographics, self_report)
+        selfreport_attempts.append({
+            "attempt":           attempt + 1,
+            "passed":            result["passed"],
+            "issues":            result["issues"],
+            "problematic_items": result["problematic_items"],
+        })
+        if result["passed"]:
+            logger.info("[%s] self-report PASS on attempt %d", label, attempt + 1)
+            break
+        logger.warning("[%s] self-report FAIL on attempt %d/%d — fixing items: %s",
+                       label, attempt + 1, max_retries + 1,
+                       list(result["problematic_items"].keys()))
+        self_report = persona_crafter.fix_self_report(
+            demographics, self_report, result["issues"], result["problematic_items"],
+        )
 
     return {
-        "agg_edges":              agg_edges,
-        "demographics":           demographics,
-        "self_report":            self_report,
-        "input_validation_attempts": attempts,
+        "agg_edges":                        agg_edges,
+        "demographics":                     demographics,
+        "self_report":                      self_report,
+        "demographics_validation_attempts": demographics_attempts,
+        "selfreport_validation_attempts":   selfreport_attempts,
     }
 
 
@@ -113,6 +98,7 @@ def step_persona(label: str, patient_id, llms: dict, persona_context: bool = Fal
         llm=llms["vignette_crafter"], patient_id=patient_id,
         use_demographics=persona_context, use_self_report=persona_context,
         use_formulation=use_formulation, demographics=demographics,
+        self_report=self_report,
     )
     vignette = vignette_crafter.create_vignette()
     return {

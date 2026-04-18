@@ -10,8 +10,10 @@ simulation:
   self_report_items: 3    # self-report items selected per active node
 
 models:
-  vignette_crafter: gpt-4o-mini
-  validator: gpt-4o-mini
+  vignette_crafter: gpt-5.4-mini
+  validator: gpt-5.4-mini
+  persona_validator: gpt-5.4-mini
+  persona_crafter: gpt-5.4-mini
 
 # ── Available models ──────────────────────────────────────────────────────────
 # OpenAI

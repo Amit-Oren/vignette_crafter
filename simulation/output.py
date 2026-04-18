@@ -128,13 +128,27 @@ def write_txt(output: dict, path):
             arrow = edge.replace("--", "→")
             f.write(f"  {arrow:<50} {val:.4f}\n")
 
-        # ── Input validation (sample_inputs step) ───────────────────────────
-        input_attempts = output.get("input_validation_attempts", [])
-        if input_attempts:
-            f.write(section("INPUT VALIDATION"))
-            for attempt in input_attempts:
+        # ── Demographics validation ───────────────────────────────────────────
+        demo_attempts = output.get("demographics_validation_attempts", [])
+        if demo_attempts:
+            f.write(section("DEMOGRAPHICS VALIDATION"))
+            for attempt in demo_attempts:
                 status = "PASS" if attempt["passed"] else "FAIL"
-                f.write(f"  [{attempt['attempt']}] {status}  —  {attempt['reasoning']}\n")
+                f.write(f"  [{attempt['attempt']}] {status}\n")
+                for issue in attempt.get("issues", []):
+                    f.write(f"    item:        {issue['field']}\n")
+                    f.write(f"    explanation: {issue['explanation']}\n")
+
+        # ── Self-report validation ────────────────────────────────────────────
+        sr_attempts = output.get("selfreport_validation_attempts", [])
+        if sr_attempts:
+            f.write(section("SELF-REPORT VALIDATION"))
+            for attempt in sr_attempts:
+                status = "PASS" if attempt["passed"] else "FAIL"
+                f.write(f"  [{attempt['attempt']}] {status}\n")
+                for issue in attempt.get("issues", []):
+                    f.write(f"    item:        {issue['component']} / {issue['item']}\n")
+                    f.write(f"    explanation: {issue['explanation']}\n")
 
         # ── Token usage ──────────────────────────────────────────────────────
         tu = output.get("token_usage", {})
@@ -156,8 +170,11 @@ def write_txt(output: dict, path):
             status = "PASS" if attempt["passed"] else "FAIL"
             f.write(f"\n  [{i}] {status}\n")
             f.write(wrap(attempt["vignette"]) + "\n")
-            if attempt.get("feedback"):
-                f.write(f"\n  Feedback: {wrap(attempt['feedback'])}\n")
+            for v in attempt.get("violations", []):
+                f.write(f"\n    edge:        {v['edge']}\n")
+                f.write(f"    explanation: {v['explanation']}\n")
+                if v.get("quote"):
+                    f.write(f"    quote:       \"{v['quote']}\"\n")
 
         # ── Vignette (final) ─────────────────────────────────────────────────
         f.write(section("VIGNETTE (final)"))

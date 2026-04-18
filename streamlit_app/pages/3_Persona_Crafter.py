@@ -22,7 +22,7 @@ st.title("Persona Crafter")
 experiment_dir, patient_data = render_sidebar_selector()
 
 if patient_data is None:
-    st.info("Select an experiment and patient from the sidebar to begin.")
+    st.info("Select an experiment and persona from the sidebar to begin.")
     st.stop()
 
 demo        = patient_data.get("demographics", {})
@@ -31,7 +31,7 @@ agg_edges   = patient_data.get("agg_edges", {})
 patient_id  = patient_data.get("patient_id", "?")
 iv_attempts = patient_data.get("input_validation_attempts", [])
 
-st.subheader(f"Patient {patient_id}")
+st.subheader(f"Persona {patient_id}")
 
 # ── Demographics ───────────────────────────────────────────────────────────
 
@@ -64,26 +64,25 @@ NODE_ORDER = [
 ]
 
 if self_report:
-    # Build per-node expanders
+    rows = []
     for node in NODE_ORDER:
         items = self_report.get(node, [])
         if not items:
             continue
-        with st.expander(f"**{node}**  ({len(items)} item{'s' if len(items) != 1 else ''})", expanded=True):
-            rows = []
-            for item in items:
-                if isinstance(item, dict):
-                    rows.append({"Item": item.get("key", ""), "Description": item.get("value", "")})
-                else:
-                    rows.append({"Item": str(item), "Description": ""})
-            st.dataframe(
-                pd.DataFrame(rows),
-                use_container_width=True,
-                hide_index=True,
-                column_config={"Description": st.column_config.TextColumn(width="large")},
-            )
+        item_texts = []
+        for item in items:
+            if isinstance(item, dict):
+                item_texts.append(item.get("key", "") or item.get("value", ""))
+            else:
+                item_texts.append(str(item))
+        rows.append({"Component": node, "Items": ", ".join(item_texts)})
+
+    df_sr = pd.DataFrame(rows)
+    st.dataframe(df_sr, use_container_width=True, hide_index=True, column_config={
+        "Items": st.column_config.TextColumn(width="large"),
+    })
 else:
-    st.info("No self-report data available for this patient.")
+    st.info("No self-report data available for this persona.")
 
 # ── Input validation (Persona Crafter LLM check) ───────────────────────────
 
@@ -117,12 +116,8 @@ with table_col:
             {"Edge": k.replace(" -- ", " → "), "Weight": round(v, 4)}
             for k, v in agg_edges.items()
         ]
-        active   = [r for r in edge_rows if r["Weight"] > 0]
-        inactive = [r for r in edge_rows if r["Weight"] == 0]
-
-        if active:
-            st.markdown("*Active*")
-            st.dataframe(pd.DataFrame(active),   use_container_width=True, hide_index=True)
-        if inactive:
-            st.markdown("*Inactive*")
-            st.dataframe(pd.DataFrame(inactive), use_container_width=True, hide_index=True)
+        if edge_rows:
+            st.dataframe(pd.DataFrame(edge_rows), use_container_width=True, hide_index=True,
+                         height=(len(edge_rows) + 1) * 35 + 3)
+        else:
+            st.info("All edge weights are zero.")

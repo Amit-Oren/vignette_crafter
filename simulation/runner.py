@@ -59,7 +59,7 @@ class SimulationRunner:
             for step in self.pipeline:
                 logger.info("[%s] step_%s: starting", label, step)
                 if step == "craft_persona":
-                    state.update(step_craft_persona(label, patient_id, self._llms["validator"], self.max_retries, self.n_items))
+                    state.update(step_craft_persona(label, patient_id, self._llms, self.max_retries, self.n_items))
                 elif step == "persona":
                     state.update(step_persona(label, patient_id, self._llms, self.persona_context, state, self.use_formulation))
                 elif step == "validate_vignette":
@@ -95,7 +95,8 @@ class SimulationRunner:
             "demographics":               state.get("demographics", {}),
             "self_report":                state.get("self_report", {}),
             "agg_edges":                  state.get("agg_edges", {}),
-            "input_validation_attempts":  state.get("input_validation_attempts", []),
+            "demographics_validation_attempts": state.get("demographics_validation_attempts", []),
+            "selfreport_validation_attempts":   state.get("selfreport_validation_attempts", []),
             "validation_summary":         self._validation_summary(vignette_attempts),
             "token_usage":                get_run_tokens(),
             "vignette":                   state.get("vignette", ""),

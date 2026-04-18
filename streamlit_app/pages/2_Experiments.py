@@ -31,23 +31,21 @@ def _build_patient_table(experiment_dir: Path) -> pd.DataFrame:
         tu   = data.get("token_usage", {})
 
         rows.append({
-            "Patient ID":       data.get("patient_id", p["patient_id"]),
+            "Persona ID":       data.get("patient_id", p["patient_id"]),
             "Age":              demo.get("age", ""),
             "Gender":           demo.get("gender", ""),
             "Trauma Type":      demo.get("trauma_type", ""),
             "PCL-5":            demo.get("pcl5", ""),
             "Attempts":         vs.get("attempts", ""),
             "Passed":           "Yes" if vs.get("ultimately_passed") else "No",
-            "Tokens":           tu.get("total", ""),
+            "Input Tokens":     tu.get("input", ""),
+            "Output Tokens":    tu.get("output", ""),
+            "Total Tokens":     tu.get("total", ""),
             "_path":            str(p["path"]),
             "_patient_id":      p["patient_id"],
         })
     return pd.DataFrame(rows)
 
-
-from utils.loader import PROJECT_ROOT
-st.write("DEBUG — PROJECT_ROOT:", str(PROJECT_ROOT))
-st.write("DEBUG — output_dir exists:", (PROJECT_ROOT / "data" / "output").exists())
 
 experiments = get_experiments()
 
@@ -58,7 +56,7 @@ if not experiments:
 selected_pid = st.session_state.get("patient_id")
 if selected_pid:
     st.success(
-        f"Patient **{selected_pid}** is selected — "
+        f"Persona **{selected_pid}** is selected — "
         "navigate to **Persona Crafter** or **Vignette** to view details."
     )
 
@@ -101,21 +99,21 @@ for exp in experiments:
 
         df = _build_patient_table(exp["path"])
         if df.empty:
-            st.warning("No patient data found in this experiment.")
+            st.warning("No persona data found in this experiment.")
             continue
 
-        display_cols = ["Patient ID", "Age", "Gender", "Trauma Type", "PCL-5",
-                        "Attempts", "Passed", "Tokens"]
+        display_cols = ["Persona ID", "Age", "Gender", "Trauma Type", "PCL-5",
+                        "Attempts", "Passed", "Input Tokens", "Output Tokens", "Total Tokens"]
         st.dataframe(df[display_cols], use_container_width=True, hide_index=True)
 
-        st.markdown("**Select a patient:**")
+        st.markdown("**Select a persona:**")
         btn_cols = st.columns(min(len(df), 8))
         for col, (_, row) in zip(btn_cols, df.iterrows()):
             pid   = row["_patient_id"]
             ppath = row["_path"]
-            if col.button(f"Patient {pid}", key=f"sel_{exp['name']}_{pid}"):
+            if col.button(f"Persona {pid}", key=f"sel_{exp['name']}_{pid}"):
                 patient_data = load_patient(Path(ppath))
                 st.session_state["experiment_path"] = str(exp["path"])
                 st.session_state["patient_id"]      = pid
                 st.session_state["patient_data"]    = patient_data
-                st.success(f"Patient **{pid}** selected.")
+                st.success(f"Persona **{pid}** selected.")

@@ -19,24 +19,15 @@ st.title("Vignette")
 experiment_dir, patient_data = render_sidebar_selector()
 
 if patient_data is None:
-    st.info("Select an experiment and patient from the sidebar to begin.")
+    st.info("Select an experiment and persona from the sidebar to begin.")
     st.stop()
 
 vignette          = patient_data.get("vignette", "")
 vignette_attempts = patient_data.get("vignette_attempts", [])
 val_summary       = patient_data.get("validation_summary", {})
-token_usage       = patient_data.get("token_usage", {})
 patient_id        = patient_data.get("patient_id", "?")
 
-st.subheader(f"Patient {patient_id}")
-
-# ── Token usage ────────────────────────────────────────────────────────────
-
-if token_usage:
-    t1, t2, t3 = st.columns(3)
-    t1.metric("Input tokens",  f"{token_usage.get('input',  0):,}")
-    t2.metric("Output tokens", f"{token_usage.get('output', 0):,}")
-    t3.metric("Total tokens",  f"{token_usage.get('total',  0):,}")
+st.subheader(f"Persona {patient_id}")
 
 # ── Validation summary ─────────────────────────────────────────────────────
 

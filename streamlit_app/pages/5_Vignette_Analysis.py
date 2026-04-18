@@ -20,18 +20,18 @@ st.title("Vignette Analysis")
 experiment_dir, patient_data = render_sidebar_selector()
 
 if patient_data is None:
-    st.info("Select an experiment and patient from the sidebar to begin.")
+    st.info("Select an experiment and persona from the sidebar to begin.")
     st.stop()
 
 patient_id = patient_data.get("patient_id", "?")
-st.subheader(f"Patient {patient_id}")
+st.subheader(f"Persona {patient_id}")
 
 st.divider()
 
 st.info(
     "Vignette Analysis is coming soon.\n\n"
     "This page will automatically score the generated vignette against the "
-    "patient's cognitive formulation — checking which Ehlers & Clark nodes and "
+    "persona's cognitive formulation — checking which Ehlers & Clark nodes and "
     "edges are present, absent, or incorrectly represented, and comparing them "
     "against the ground-truth EMA edge weights."
 )

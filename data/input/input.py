@@ -44,6 +44,23 @@ def sample_demographics() -> dict:
     }
 
 
+def resample_demographics_fields(demographics: dict, fields: list[str]) -> dict:
+    """Re-sample only the specified fields, keeping all others unchanged."""
+    _samplers = {
+        "age":                 lambda: random.randint(AGE["min"], AGE["max"]),
+        "gender":              lambda: random.choice(GENDER),
+        "nationality":         lambda: random.choice(NATIONALITY),
+        "relationship_status": lambda: random.choice(RELATIONSHIP_STATUS),
+        "trauma_type":         lambda: random.choice(TRAUMA_TYPE),
+        "pcl5":                lambda: random.randint(PCL5["min"], PCL5["max"]),
+    }
+    updated = dict(demographics)
+    for field in fields:
+        if field in _samplers:
+            updated[field] = _samplers[field]()
+    return updated
+
+
 def sample_self_report(nodes: list[str], n_items: int = 3) -> dict:
     """Sample self-report items for each active node.
     Returns dict of node_name → list of {key, value} dicts.

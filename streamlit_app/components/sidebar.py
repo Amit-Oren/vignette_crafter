@@ -60,7 +60,7 @@ def render_sidebar_selector() -> tuple:
     patients = get_patients(experiment_dir)
 
     if not patients:
-        st.sidebar.warning("No patients found in this experiment.")
+        st.sidebar.warning("No personas found in this experiment.")
         return experiment_dir, None
 
     patient_ids = [p["patient_id"] for p in patients]
@@ -71,10 +71,10 @@ def render_sidebar_selector() -> tuple:
         default_pat_index = patient_ids.index(str(remembered_pid))
 
     selected_patient_id = st.sidebar.selectbox(
-        "Patient",
+        "Persona",
         options=patient_ids,
         index=default_pat_index,
-        format_func=lambda pid: f"Patient {pid}",
+        format_func=lambda pid: f"Persona {pid}",
         key="sidebar_patient_select",
     )
 

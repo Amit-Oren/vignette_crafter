@@ -1,81 +1,120 @@
 # =============================================================================
-# SELF-REPORT SELECTOR
+# PERSONA CRAFTER
 # =============================================================================
 
-SELF_REPORT_SELECTOR_PROMPT = """You are a clinical psychologist assembling a self-report profile for a PTSD patient.
 
-You are given:
-- Patient demographics (pay close attention to trauma type and PCL-5 severity)
-- The patient's active causal components and the strength of connections between them
-  (higher strength = more central to this patient's presentation)
-- For each active component, a pool of candidate self-report items to choose from
+PERSONA_CRAFTER_SYSTEM_PROMPT = """You are a clinical psychologist selecting replacement self-report items for a PTSD patient.
 
-Your task: select exactly {n_items} items per component that best fit this specific patient.
+Some items in the patient's self-report were found to be clinically inconsistent with their trauma type or with the other items in their profile.
+Your job: select one replacement per flagged item from the pool below.
 
-Selection criteria:
-- Items must be congruent with the trauma type
-- Items should reflect the relative strength of active edges
-  (components with stronger connections deserve more prototypical items)
-- Items must be internally coherent across components
-  (e.g. if Triggers are sensory cues from a military context, Memory and Threat items should match)
-- Do NOT select items that contradict the trauma type or each other
+SELECTION CRITERIA — in order of priority:
+1. Trauma-type fit: the replacement must be clearly plausible for a patient with THIS specific trauma type.
+   Ask yourself: "Would a clinician expect this item in a patient who experienced [trauma_type]?"
+   If the answer is uncertain, pick a different item.
+2. Cross-profile coherence: the replacement must be consistent with the other (non-flagged) items already in the self-report.
+   Do not introduce items that contradict or are unrelated to the rest of the profile.
+3. Use the validator's explanation: each flagged item includes the reason it was rejected.
+   The replacement should directly address that reason.
+
+Available replacement items (only for flagged components):
+{replacement_pools}"""
+
+PERSONA_CRAFTER_USER_PROMPT = """Patient demographics:
+{demographics}
+
+Current self-report (items NOT flagged must remain unchanged):
+{current_self_report}
+
+Flagged items with reasons for rejection:
+{issues}
+
+For each flagged item, select ONE replacement key from the pool above.
+The replacement must fit the patient's trauma type and be coherent with their other self-report items.
+IMPORTANT: Do not re-select any of the flagged item keys. Each replacement must be a different key."""
+
+
+# =============================================================================
+# PERSONA VALIDATOR
+# =============================================================================
+
+
+PERSONA_VALIDATOR_DEMOGRAPHICS_SYSTEM_PROMPT = """You are a validator checking whether a PTSD patient's demographic profile is internally consistent and plausible.
+
+You will receive a set of demographic fields. Your task is to identify combinations that are clearly implausible — not merely unusual.
+
+VALIDATION RULES:
+
+AGE
+- Must be between 18 and 80. Flag if outside this range.
+
+AGE + RELATIONSHIP_STATUS
+- "Widowed" is implausible if age < 22. Flag both fields.
+- All other relationship statuses ("Single", "Married", "Divorced", "In a relationship") are plausible from age 18. Do not flag these.
+
+AGE + TRAUMA_TYPE
+- "Military" is implausible if age < 18. Flag both fields.
+- All other trauma types are plausible for any adult (18+). Do not flag these.
+
+GENDER + TRAUMA_TYPE
+- Do not flag any trauma type based on gender. All trauma types can affect any gender.
+
+PCL5
+- Must be between 33 and 80. Flag if outside this range.
+
+NATIONALITY, GENDER
+- These fields are never invalid on their own. Do not flag them unless they are missing or malformed."""
+
+PERSONA_VALIDATOR_DEMOGRAPHICS_USER_PROMPT = """Validate the following patient demographics for internal consistency:
+
+{demographics}"""
+
+
+PERSONA_VALIDATOR_SELFREPORT_SYSTEM_PROMPT = """You are a validator checking whether a PTSD patient's self-report profile is clinically coherent.
+
+Demographics and trauma type have already been validated. Your job is to check two things:
+1. Whether the selected items are consistent with the patient's demographics and trauma type.
+2. Whether the selected items are internally consistent — both across nodes and within each node.
+
+SCOPE: Only flag items belonging to these five components: Triggers, Threat, Negative Appraisals, Memory, Maladaptive Strategies.
+Do NOT flag PCL-5 score, overall severity, or any meta-level concern — only flag individual items within the five components above.
+
+JUDGMENT GUIDELINES:
+
+- Clearly implausible vs merely unusual:
+  A combination is clearly implausible if a clinician would immediately question whether the items could describe the same patient with the same trauma.
+  Unusual or unexpected combinations are not enough to flag — real patients are heterogeneous.
+  Only flag when the mismatch is hard to explain clinically.
+  If you can construct any plausible clinical narrative that connects the item to the trauma type, do NOT flag it — even if that narrative requires some inference.
+
+- Within-node consistency:
+  Three items from the same node should not directly contradict each other. 
+  Thematic redundancy is fine. Flag only when two items within the same node express opposing clinical states — for example, easy verbal recall alongside complete inability to verbalize the event, or active rumination alongside total emotional numbness toward the event.
+
+- Cross-node consistency:
+  The items across all nodes should describe a coherent patient. 
+  Flag when items from different nodes pull in opposite directions in a way that cannot plausibly coexist — for example, triggers that imply a specific threat context that is entirely absent from the appraisals and memory items, or maladaptive strategies that address a symptom type not represented anywhere else in the profile.
+
+- PCL-5 severity:
+  The PCL-5 score reflects overall symptom severity. 
+  Flag if the items selected across nodes are clearly mismatched with that severity level — either consistently too mild or consistently too severe relative to the score.
+
+"""
+
+PERSONA_VALIDATOR_SELFREPORT_USER_PROMPT = """Validate the following patient's self-report for clinical coherence with their demographics and trauma type.
 
 Patient demographics:
 {demographics}
 
-Active edges and strengths:
-{edges}
-
-Candidate items per component:
-{pools}
-
-Return a JSON object where each key is a component name and each value is a list
-of exactly {n_items} item keys selected from that component's candidate pool.
-Only use keys that appear verbatim in the candidate lists above.
-"""
-
-
-# =============================================================================
-# INPUT VALIDATOR
-# =============================================================================
-
-VALIDATOR_INPUTS_PROMPT = """You are a clinical psychologist reviewing a PTSD patient profile for internal consistency.
-
-You will be given:
-- Demographics (age, gender, nationality, relationship status, trauma type, PCL-5 score)
-- Active causal components and edge strengths from the patient's cognitive model
-- Sampled self-report items for each active component
-
-Your job is to check whether this combination is clinically plausible as a real patient.
-
-Check the following:
-1. TRAUMA TYPE vs TRIGGERS/SELF-REPORT — do the sampled items fit the trauma type?
-   (e.g. military trauma should have relevant triggers; sexual violence should not have unrelated items)
-2. PCL-5 SEVERITY vs EDGE STRENGTHS — does the PCL-5 score match the overall density and strength of active edges?
-   (e.g. PCL-5=70 with mostly weak edges is suspicious; PCL-5=33 with many strong edges is suspicious)
-3. SELF-REPORT COHERENCE — are the sampled items internally consistent with each other and the active components?
-   (e.g. avoidance items present without any trigger items is inconsistent)
-
-Demographics:
-{demographics}
-
-Active components and edge strengths:
-{edges}
-
 Self-report items:
-{self_report}
-
-Return a JSON object with two fields:
-- "verdict": exactly "PASS" or "FAIL"
-- "reasoning": one or two sentences explaining what is inconsistent (on FAIL) or confirming coherence (on PASS)
-"""
+{self_report}"""
 
 
 # =============================================================================
-# PERSONA CRAFTER
+# VIGNETTE CRAFTER
 # =============================================================================
 
-PERSONA_CRAFTER_AGENT_PROMPT = """You are a clinical psychologist writing a psychological case vignette
+VIGNETTE_CRAFTER_PROMPT = """You are a clinical psychologist writing a psychological case vignette
 grounded in Ehlers & Clark's (2000) cognitive model of PTSD.
 
 You have been given a patient's PTSD profile as a set of causal connections between components.
@@ -90,7 +129,8 @@ Forbidden causal connections (must NEVER appear — not explicitly, not implicit
 Constraints:
 - Only include components that appear in at least one active connection.
 - Do NOT invent or infer causal links not in the active list.
-- Forbidden links must never be suggested, implied, or hinted at.
+- For forbidden pairs, never use explicit causal language between them: "as a result", "led to", "caused", "because of", "contributing to", "driven by", "resulting in". Both components may appear in the vignette — just do not connect them causally.
+- Do not give motivational or explanatory clauses for avoidance behaviors using a belief or appraisal as the reason (e.g. "she avoids X, believing that Y", "she steers clear of X, fearing that Y"). This implicitly connects Negative Appraisals to Maladaptive Strategies. Instead, describe the avoidance and the belief in separate sentences without linking them.
 
 Output Format:
 Write 200–300 words in third person.
@@ -98,7 +138,7 @@ Cover: presenting complaints, trauma background, cognitive distortions, avoidanc
 Avoid excessive jargon - write for a clinical case conference audience.
 """
 
-PERSONA_CRAFTER_AGENT_PROMPT_CONTEXT = """You are a clinical psychologist writing a psychological case vignette
+VIGNETTE_CRAFTER_PROMPT_CONTEXT = """You are a clinical psychologist writing a psychological case vignette
 grounded in Ehlers & Clark's (2000) cognitive model of PTSD.
 
 You have been given a patient's full PTSD profile including their demographics, specific self-reported symptoms, and causal connections between components.
@@ -119,7 +159,8 @@ Forbidden causal connections (must NEVER appear — not explicitly, not implicit
 Constraints:
 - Only include components that appear in at least one active connection.
 - Do NOT invent or infer causal links not in the active list.
-- Forbidden links must never be suggested, implied, or hinted at.
+- For forbidden pairs, never use explicit causal language between them: "as a result", "led to", "caused", "because of", "contributing to", "driven by", "resulting in". Both components may appear in the vignette — just do not connect them causally.
+- Do not give motivational or explanatory clauses for avoidance behaviors using a belief or appraisal as the reason (e.g. "she avoids X, believing that Y", "she steers clear of X, fearing that Y"). This implicitly connects Negative Appraisals to Maladaptive Strategies. Instead, describe the avoidance and the belief in separate sentences without linking them.
 - Ground the vignette in the patient's actual reported items — do not fabricate symptoms.
 
 Output Format:
@@ -128,7 +169,7 @@ Cover: presenting complaints, trauma background, cognitive distortions, avoidanc
 Avoid excessive jargon - write for a clinical case conference audience.
 """
 
-PERSONA_CRAFTER_USER_PROMPT = """Write a clinical vignette for this patient.
+VIGNETTE_CRAFTER_USER_PROMPT = """Write a clinical vignette for this patient.
 
 The vignette should read as a cohesive, flowing portrait — not a structured report.
 Weave together who this person is, what happened to them, how they experience their
@@ -143,15 +184,20 @@ Write in the third person, in a tone suitable for presenting a case to a clinica
 Aim for 4–5 paragraphs of continuous prose.
 """
 
-PERSONA_CRAFTER_RETRY_PROMPT = """Your previous attempt was:
+VIGNETTE_CRAFTER_RETRY_PROMPT = """Your previous vignette failed validation. You must rewrite it to remove the flagged causal connections.
+
+Previous vignette:
 {previous_persona}
 
-It failed validation. Here is the feedback:
+Violations to fix:
 {feedback}
 
-Please fix ONLY the flagged violations.
-Keep everything else the same.
-Do not introduce new causal links that are not in the edge list."""
+How to fix violations:
+- A violation exists only when EXPLICIT causal language directly connects a forbidden pair — words like "because of", "led to", "caused", "as a result of", "driven by".
+- Narrative proximity is NOT a violation. Two components can appear in the same paragraph or even the same sentence without implying causation, as long as no explicit causal link is stated.
+- To remove a violation: delete or rephrase the explicit causal language. You do NOT need to remove the components themselves — just decouple them.
+- You may restructure entire paragraphs if needed. Do not aim for minimal edits if the structure itself is the problem.
+- Do not introduce any new explicit causal links that are not in the required edge list."""
 
 
 # =============================================================================
@@ -213,7 +259,7 @@ Avoid excessive jargon - write for a clinical case conference audience.
 # VALIDATOR
 # =============================================================================
 
-VALIDATOR_VIGNETTE_PROMPT = """You are a clinical validator checking whether a PTSD case vignette accurately reflects a specific cognitive model.
+VALIDATOR_VIGNETTE_SYSTEM_PROMPT = """You are a clinical validator checking whether a PTSD case vignette accurately reflects a specific cognitive model.
 
 CRITICAL: The two lists below are MUTUALLY EXCLUSIVE and OPPOSITE in meaning.
 - REQUIRED edges MUST appear in the vignette. Finding them is a GOOD thing — do NOT flag them as violations.
@@ -232,23 +278,35 @@ Each of these causal connections must appear explicitly or be clearly implied.
 → FAIL only if a required edge is completely absent from the vignette.
 
 STEP 3 — FORBIDDEN EDGES (must be absent)
-These causal connections must NOT appear — not explicitly, not implicitly.
+These causal connections must NOT appear explicitly in the vignette.
 {forbidden_edges}
 
-What counts as an implicit violation:
-- A and B described together in a way that implies one causes the other
-- One component immediately follows another, implying causation
-- The narrative "cycle" passes through a forbidden link
-→ FAIL if any forbidden edge appears. When genuinely uncertain about a forbidden edge, FAIL.
+What counts as a violation (HIGH bar — require explicit causal language):
+- The vignette uses explicit causal words to connect the two components: "because of", "led to", "caused", "as a result of", "driven by", "due to", "resulting in", "made X lead to Y".
+- The sentence structure is unmistakably X → Y with no other interpretation possible.
+
+What does NOT count as a violation:
+- Two components appearing in the same paragraph or section.
+- Two components appearing in adjacent sentences without causal connectors.
+- Narrative ordering (X described before Y in the text).
+- Thematic grouping (both mentioned under the same topic).
+- General distress language that does not specify a causal direction.
+
+- Only FAIL if a forbidden edge is connected by explicit causal language. 
 
 STEP 4 — VERDICT
-Before returning your verdict, confirm:
-- You have NOT flagged any edge from the REQUIRED list as a violation.
-- Every flagged violation comes from the FORBIDDEN list.
+Before finalizing, scan your violations list and remove any edge that appears in the REQUIRED list above.
+Required edges are never violations — remove them even if the vignette text seemed suspicious.
 
-Return a JSON object with two fields:
-- "verdict": exactly "PASS" or "FAIL"
-- "reasoning": 1-2 sentences naming the specific edge(s) that caused a FAIL, or confirming all required edges are present for a PASS"""
+Then confirm:
+- Every remaining violation is from the FORBIDDEN list.
+- Every remaining violation contains an explicit causal connector in the quote ("as a result", "led to", "caused", "because of", "contributing to", "driven by", "resulting in").
+- If a violation's quote does not contain explicit causal language between the two components, remove it.
+"""
+
+VALIDATOR_VIGNETTE_USER_PROMPT = """Validate the following vignette:
+
+{vignette}"""
 
 
 # =============================================================================

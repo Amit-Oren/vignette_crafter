@@ -1,90 +1,101 @@
-import json
 import logging
-import re
+from pydantic import BaseModel
 from .base_agent import BaseAgent, _count
-from configs.prompts import SELF_REPORT_SELECTOR_PROMPT
+from configs.prompts import PERSONA_CRAFTER_SYSTEM_PROMPT, PERSONA_CRAFTER_USER_PROMPT
 from data.input.input import _NODE_POOLS
+
+
+class NodeSelection(BaseModel):
+    component: str      # e.g. "Triggers"
+    items: list[str]    # list of replacement key names
+
+
+class SelectionResult(BaseModel):
+    selections: list[NodeSelection]
 
 logger = logging.getLogger(__name__)
 
 
 class PersonaCrafterAgent(BaseAgent):
-    """Selects coherent self-report items for each active node.
-
-    Given the full candidate pools, patient demographics, and aggregated EMA
-    edge strengths, the agent picks N items per node that best fit the patient.
-    A structural check then ensures valid keys, no duplicates, and correct count.
-    """
+    """Fixes flagged self-report items with clinically coherent replacements."""
 
     def __init__(self, name: str, role: str, llm,
-                 active_nodes: list[str], demographics: dict, agg_edges: dict,
-                 n_items: int = 3):
+                 active_nodes: list[str], n_items: int = 3):
         self.active_nodes = active_nodes
-        self.demographics = demographics
-        self.agg_edges    = agg_edges
         self.n_items      = n_items
         super().__init__(name, role, system_prompt="", llm=llm)
 
-    def select(self) -> dict:
-        prompt = SELF_REPORT_SELECTOR_PROMPT.format(
-            n_items=self.n_items,
-            demographics=self.fmt_demographics(),
-            edges=self.fmt_edges(),
-            pools=self.fmt_pools(),
+    def setup_agent(self):
+        return None
+
+    def fix_self_report(self, demographics: dict, self_report: dict,
+                        issues: list[dict], problematic_items: dict[str, list[str]]) -> dict:
+        """Replace only the flagged items with better alternatives."""
+        self.system_prompt = PERSONA_CRAFTER_SYSTEM_PROMPT.format(
+            replacement_pools=self.fmt_pools(list(problematic_items.keys())),
         )
+        user_prompt = PERSONA_CRAFTER_USER_PROMPT.format(
+            demographics=self.fmt_demographics(demographics),
+            current_self_report=self.fmt_self_report(self_report),
+            issues=self._fmt_issues(issues),
+        )
+        structured_llm = self.llm.with_structured_output(SelectionResult, include_raw=True, method="function_calling")
+        raw = structured_llm.invoke([
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user",   "content": user_prompt},
+        ])
+        if isinstance(raw, dict):
+            _count(raw.get("raw"))
+            result: SelectionResult = raw["parsed"]
+        else:
+            result: SelectionResult = raw
 
-        response = self.llm.invoke([{"role": "user", "content": prompt}])
-        _count(response)
-        raw_text = response.content
-        self.log_response(prompt, raw_text)
+        if result is None:
+            logger.warning("[%s] fix_self_report parsing failed — keeping original items", self.name)
+            return self_report
 
-        # Extract JSON object from response
-        match = re.search(r"\{.*\}", raw_text, re.DOTALL)
-        selections = json.loads(match.group()) if match else {}
+        selections_dict = {ns.component: ns.items for ns in result.selections}
+        self.log_response(user_prompt, str(selections_dict), output=selections_dict)
 
-        logger.info("[%s] selected self-report for: %s", self.name, list(selections.keys()))
-        return self.validate(selections)
+        # Build lookup from component name → list of suggested keys
+        # Normalize: strip value part if LLM returns "key: value" format
+        selections_by_node: dict[str, list[str]] = {}
+        for ns in result.selections:
+            selections_by_node[ns.component] = [k.split(":")[0].strip() for k in ns.items]
 
-    # ── Formatting helpers ────────────────────────────────────────────────────
+        # Merge: replace only problematic items, keep the rest
+        updated = {node: list(items) for node, items in self_report.items()}
+        for node, bad_keys in problematic_items.items():
+            pool = _NODE_POOLS.get(node, {})
+            if not pool:
+                logger.warning("[%s] unknown node '%s' in problematic_items — skipping", self.name, node)
+                continue
+            replacements = selections_by_node.get(node, [])
+            current_keys = [i["key"] if isinstance(i, dict) else i for i in updated.get(node, [])]
 
-    def fmt_demographics(self) -> str:
-        return "\n".join(f"  {k}: {v}" for k, v in self.demographics.items())
+            kept     = [k for k in current_keys if k not in bad_keys]
+            # Exclude bad_keys from replacements even if the LLM re-suggested them
+            new_keys = [k for k in replacements if k in pool and k not in kept and k not in bad_keys]
+            merged   = kept + new_keys
 
-    def fmt_edges(self) -> str:
-        lines = [
-            f"  {p} → {c}: {v:.2f}"
-            for (p, c), v in self.agg_edges.items() if v > 0
-        ]
-        return "\n".join(lines) or "  (none)"
+            if len(merged) < self.n_items:
+                for key in pool:
+                    if key not in merged and key not in bad_keys:
+                        merged.append(key)
+                    if len(merged) == self.n_items:
+                        break
 
-    def fmt_pools(self) -> str:
+            updated[node] = [{"key": k, "value": pool[k]} for k in merged[:self.n_items]]
+
+        logger.info("[%s] fixed items for nodes: %s", self.name, list(problematic_items.keys()))
+        return updated
+
+    @staticmethod
+    def fmt_pools(nodes: list) -> str:
         lines = []
-        for node in self.active_nodes:
+        for node in nodes:
             pool = _NODE_POOLS.get(node, {})
             lines.append(f"  {node}:")
             for key, value in pool.items():
                 lines.append(f"    - {key}: {value}")
         return "\n".join(lines)
-
-    # ── Structural validation ─────────────────────────────────────────────────
-
-    def validate(self, selections: dict[str, list[str]]) -> dict:
-        """Ensure valid keys, no duplicates, and correct item count per node."""
-        result = {}
-        for node in self.active_nodes:
-            pool = _NODE_POOLS.get(node, {})
-            raw  = selections.get(node, [])
-
-            # Normalise: accept plain strings or {"key": ..., "value": ...} dicts
-            keys = [k["key"] if isinstance(k, dict) else k for k in raw]
-            valid = list(dict.fromkeys(k for k in keys if k in pool))
-
-            if len(valid) < self.n_items:
-                for key in pool:
-                    if key not in valid:
-                        valid.append(key)
-                    if len(valid) == self.n_items:
-                        break
-
-            result[node] = [{"key": k, "value": pool[k]} for k in valid[:self.n_items]]
-        return result

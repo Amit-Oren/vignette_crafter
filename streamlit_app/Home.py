@@ -36,15 +36,15 @@ with col_what:
     st.subheader("What it does")
     st.markdown(
         """
-        The Vignette Crafter generates realistic, clinically coherent patient vignettes
+        The Vignette Crafter generates realistic, clinically coherent persona vignettes
         for PTSD assessment and training purposes.
 
-        Given a patient's **aggregated EMA (Ecological Momentary Assessment) data**,
+        Given a persona's **aggregated EMA (Ecological Momentary Assessment) data**,
         it samples a demographic profile and relevant self-report items, then uses a
         language model to write a first-person vignette that faithfully reflects the
-        patient's unique cognitive formulation.
+        persona's unique cognitive formulation.
 
-        Each vignette is automatically **validated** against the patient's cognitive
+        Each vignette is automatically **validated** against the persona's cognitive
         graph before being accepted.
         """
     )
@@ -64,7 +64,7 @@ with col_model:
         **Maladaptive Strategies** | Avoidance, suppression, and safety behaviours |
 
         Directed edges between nodes capture the **causal relationships** — derived from
-        EMA data — that shape each patient's individual formulation.
+        EMA data — that shape each persona's individual formulation.
         """
     )
 
@@ -82,7 +82,7 @@ with p1:
         **1 — Persona Crafter**
 
         Selects the most clinically coherent self-report items for each active
-        node, guided by the patient's EMA edge strengths and demographics.
+        node, guided by the persona's EMA edge strengths and demographics.
         """
     )
 with p2:
@@ -99,7 +99,7 @@ with p3:
         """
         **3 — Validator**
 
-        Checks that the vignette correctly reflects the patient's required
+        Checks that the vignette correctly reflects the persona's required
         edges (active) and forbidden edges (inactive). Provides feedback for
         revision if it fails.
         """
@@ -134,8 +134,8 @@ st.markdown(
     """
     | Page | Description |
     |------|-------------|
-    | **Experiments** | Browse all past runs, their config, and per-patient results. |
-    | **Persona Crafter** | View the sampled demographics, selected self-report items, and cognitive formulation graph for a patient. |
+    | **Experiments** | Browse all past runs, their config, and per-persona results. |
+    | **Persona Crafter** | View the sampled demographics, selected self-report items, and cognitive formulation graph for a persona. |
     | **Vignette** | Read the final generated vignette and inspect each validation attempt. |
     | **Vignette Analysis** | *(Coming soon)* Structured analysis of the vignette against the cognitive model. |
     """
