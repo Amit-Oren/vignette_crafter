@@ -1,6 +1,6 @@
 import logging
 from pydantic import BaseModel
-from .base_agent import BaseAgent, _count
+from .base_agent import BaseAgent
 from configs.prompts import PERSONA_CRAFTER_SYSTEM_PROMPT, PERSONA_CRAFTER_USER_PROMPT
 from data.input.input import _NODE_POOLS
 
@@ -39,56 +39,49 @@ class PersonaCrafterAgent(BaseAgent):
             current_self_report=self.fmt_self_report(self_report),
             issues=self._fmt_issues(issues),
         )
-        structured_llm = self.llm.with_structured_output(SelectionResult, include_raw=True, method="function_calling")
-        raw = structured_llm.invoke([
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user",   "content": user_prompt},
-        ])
-        if isinstance(raw, dict):
-            _count(raw.get("raw"))
-            result: SelectionResult = raw["parsed"]
-        else:
-            result: SelectionResult = raw
 
+        result: SelectionResult = self._invoke_structured(SelectionResult, self.system_prompt, user_prompt)
         if result is None:
             logger.warning("[%s] fix_self_report parsing failed — keeping original items", self.name)
             return self_report
 
-        selections_dict = {ns.component: ns.items for ns in result.selections}
-        self.log_response(user_prompt, str(selections_dict), output=selections_dict)
+        selections_by_node = self._normalize_selections(result)
+        self.log_response(user_prompt, str(selections_by_node), output=selections_by_node)
+        return self._apply_selections(self_report, selections_by_node, problematic_items)
 
-        # Build lookup from component name → list of suggested keys
-        # Normalize: strip value part if LLM returns "key: value" format
-        selections_by_node: dict[str, list[str]] = {}
-        for ns in result.selections:
-            selections_by_node[ns.component] = [k.split(":")[0].strip() for k in ns.items]
+    def _normalize_selections(self, result: SelectionResult) -> dict[str, list[str]]:
+        """Parse LLM output, stripping any 'key: value' format down to just the key."""
+        return {
+            ns.component: [k.split(":")[0].strip() for k in ns.items]
+            for ns in result.selections
+        }
 
-        # Merge: replace only problematic items, keep the rest
+    def _apply_selections(self, self_report: dict, selections_by_node: dict,
+                          problematic_items: dict[str, list[str]]) -> dict:
+        """Apply LLM-chosen replacements to self_report, node by node."""
         updated = {node: list(items) for node, items in self_report.items()}
         for node, bad_keys in problematic_items.items():
             pool = _NODE_POOLS.get(node, {})
             if not pool:
-                logger.warning("[%s] unknown node '%s' in problematic_items — skipping", self.name, node)
+                logger.warning("[%s] unknown node '%s' — skipping", self.name, node)
                 continue
-            replacements = selections_by_node.get(node, [])
             current_keys = [i["key"] if isinstance(i, dict) else i for i in updated.get(node, [])]
-
-            kept     = [k for k in current_keys if k not in bad_keys]
-            # Exclude bad_keys from replacements even if the LLM re-suggested them
-            new_keys = [k for k in replacements if k in pool and k not in kept and k not in bad_keys]
-            merged   = kept + new_keys
-
-            if len(merged) < self.n_items:
-                for key in pool:
-                    if key not in merged and key not in bad_keys:
-                        merged.append(key)
-                    if len(merged) == self.n_items:
-                        break
-
-            updated[node] = [{"key": k, "value": pool[k]} for k in merged[:self.n_items]]
-
+            merged = self._merge_node(bad_keys, pool, selections_by_node.get(node, []), current_keys)
+            updated[node] = [{"key": k, "value": pool[k]} for k in merged]
         logger.info("[%s] fixed items for nodes: %s", self.name, list(problematic_items.keys()))
         return updated
+
+    def _merge_node(self, bad_keys: list, pool: dict, replacements: list, current_keys: list) -> list:
+        """Return kept + new replacement keys for a node, padding to n_items if needed."""
+        kept     = [k for k in current_keys if k not in bad_keys]
+        new_keys = [k for k in replacements if k in pool and k not in kept and k not in bad_keys]
+        merged   = kept + new_keys
+        for key in pool:
+            if len(merged) == self.n_items:
+                break
+            if key not in merged and key not in bad_keys:
+                merged.append(key)
+        return merged[:self.n_items]
 
     @staticmethod
     def fmt_pools(nodes: list) -> str:

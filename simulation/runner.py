@@ -43,7 +43,7 @@ class SimulationRunner:
         return list(np.random.choice(available, size=self.num_patients, replace=False))
 
     def run(self):
-        patient_ids = self.patient_ids if self.patient_ids is not None else self._sample_patients()
+        patient_ids = self.patient_ids if self.patient_ids else self._sample_patients()
 
         for patient_id in patient_ids:
             label = f"Client_{patient_id}"

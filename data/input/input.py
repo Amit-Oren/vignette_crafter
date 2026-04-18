@@ -83,8 +83,8 @@ def get_demographics(_patient_id) -> dict:
 def get_self_report(patient_id) -> dict:
     """Return sampled self-report items for each active node for this patient."""
     agg = extract_aggregated_edges(patient_id)
-    active_nodes = {node for (p, c), w in agg.items() if w > 0 for node in (p, c)}
-    return {node: items for node, items in sample_self_report(list(active_nodes)).items()}
+    active_nodes = list(dict.fromkeys(node for (p, c), w in agg.items() if w > 0 for node in (p, c)))
+    return {node: items for node, items in sample_self_report(active_nodes).items()}
 
 
 # ── Edge extraction ───────────────────────────────────────────────────────────
@@ -117,12 +117,11 @@ def get_aggregated_context(patient_id) -> dict:
     """Build full context: sampled self-report items + aggregated edge strengths."""
     agg = extract_aggregated_edges(patient_id)
 
-    active_nodes = set()
-    for (parent, child), weight in agg.items():
-        if weight > 0:
-            active_nodes.update([parent, child])
+    active_nodes = list(dict.fromkeys(
+        node for (parent, child), weight in agg.items() if weight > 0 for node in (parent, child)
+    ))
 
-    ni = sample_self_report(list(active_nodes))
+    ni = sample_self_report(active_nodes)
 
     return {
         "nodes": {node: {"items": items} for node, items in ni.items()},

@@ -105,6 +105,20 @@ class BaseAgent(ABC):
     def __repr__(self):
         return f"<Agent name={self.name} role={self.role}>"
 
+    # ── Structured LLM helper ────────────────────────────────────────────────
+
+    def _invoke_structured(self, schema, system_prompt: str, user_prompt: str):
+        """Invoke the LLM with a structured output schema. Returns parsed result or None."""
+        structured_llm = self.llm.with_structured_output(schema, include_raw=True, method="function_calling")
+        raw = structured_llm.invoke([
+            {"role": "system", "content": system_prompt},
+            {"role": "user",   "content": user_prompt},
+        ])
+        if isinstance(raw, dict):
+            _count(raw.get("raw"))
+            return raw["parsed"]
+        return raw
+
     # ── Shared formatting helpers ─────────────────────────────────────────────
 
     @staticmethod

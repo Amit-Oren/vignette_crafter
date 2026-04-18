@@ -120,7 +120,7 @@ grounded in Ehlers & Clark's (2000) cognitive model of PTSD.
 You have been given a patient's PTSD profile as a set of causal connections between components.
 Use ONLY these connections to construct a realistic clinical portrait.
 
-Active causal connections (must appear in the vignette):
+clinical vignette (must appear in the vignette):
 {required_edges}
 
 Forbidden causal connections (must NEVER appear — not explicitly, not implicitly, not narratively):

@@ -1,7 +1,7 @@
 simulation:
-  num_patients: 1
-  patient_ids: [1]   # e.g. [23] or [23, 45] — overrides num_patients if set
-  seed: 30
+  num_patients: 46
+  patient_ids: []   # e.g. [23] or [23, 45] — overrides num_patients if set
+  seed: 42
   max_retries: 2
   temperature: 0.7
   pipeline: vignette_full
@@ -17,7 +17,6 @@ models:
 
 # ── Available models ──────────────────────────────────────────────────────────
 # OpenAI
-#   gpt-4o-mini
 #   gpt-5.4-mini
 #   gpt-5.4
 #
