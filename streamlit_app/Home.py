@@ -138,6 +138,7 @@ st.markdown(
     | **Persona Crafter** | View the sampled demographics, selected self-report items, and cognitive formulation graph for a persona. |
     | **Vignette** | Read the final generated vignette and inspect each validation attempt. |
     | **Vignette Analysis** | *(Coming soon)* Structured analysis of the vignette against the cognitive model. |
+    | **Dataset Analysis** | Semantic similarity scatter plot across all vignettes — check for diversity and clusters. |
     """
 )
 

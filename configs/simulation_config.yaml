@@ -10,10 +10,10 @@ simulation:
   self_report_items: 3    # self-report items selected per active node
 
 models:
-  vignette_crafter: gpt-5.4-mini
-  validator: gpt-5.4-mini
-  persona_validator: gpt-5.4-mini
-  persona_crafter: gpt-5.4-mini
+  vignette_crafter: llama3.1-70b
+  validator: llama3.1-70b
+  persona_validator: llama3.1-70b
+  persona_crafter: llama3.1-70b
 
 # ── Available models ──────────────────────────────────────────────────────────
 # OpenAI
@@ -25,7 +25,7 @@ models:
 #   claude-3-sonnet
 #
 # DeepSeek  (requires DEEPSEEK_API_KEY in .env)
-#   deepseek-chat
+#   llama3.1-70b
 #   deepseek-reasoner
 #
 # Lab / Tailscale  (requires Tailscale connection)

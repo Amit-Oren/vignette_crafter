@@ -45,30 +45,40 @@ class SimulationRunner:
     def run(self):
         patient_ids = self.patient_ids if self.patient_ids else self._sample_patients()
 
+        failed = []
         for patient_id in patient_ids:
             label = f"Client_{patient_id}"
             logger.info("=== Patient %s starting ===", patient_id)
             set_context_subdir(f"patient_{patient_id}")
             reset_run_tokens()
 
-            state: dict = {}
-            validator = ValidatorAgent(
-                name=f"{label}_Validator", role="Validator", llm=self._llms["validator"],
-            )
+            try:
+                state: dict = {}
+                validator = ValidatorAgent(
+                    name=f"{label}_Validator", role="Validator", llm=self._llms["validator"],
+                )
 
-            for step in self.pipeline:
-                logger.info("[%s] step_%s: starting", label, step)
-                if step == "craft_persona":
-                    state.update(step_craft_persona(label, patient_id, self._llms, self.max_retries, self.n_items))
-                elif step == "persona":
-                    state.update(step_persona(label, patient_id, self._llms, self.persona_context, state, self.use_formulation))
-                elif step == "validate_vignette":
-                    state.update(step_validate_persona(label, state, validator, self.max_retries))
-                elif step == "zero_shot":
-                    state.update(step_zero_shot(label, patient_id, self._llms))
-                logger.info("[%s] step_%s: done", label, step)
+                for step in self.pipeline:
+                    logger.info("[%s] step_%s: starting", label, step)
+                    if step == "craft_persona":
+                        state.update(step_craft_persona(label, patient_id, self._llms, self.max_retries, self.n_items))
+                    elif step == "persona":
+                        state.update(step_persona(label, patient_id, self._llms, self.persona_context, state, self.use_formulation))
+                    elif step == "validate_vignette":
+                        state.update(step_validate_persona(label, state, validator, self.max_retries))
+                    elif step == "zero_shot":
+                        state.update(step_zero_shot(label, patient_id, self._llms))
+                    logger.info("[%s] step_%s: done", label, step)
 
-            self._save(patient_id, state)
+                self._save(patient_id, state)
+            except Exception as e:
+                logger.error("=== Patient %s FAILED: %s — skipping ===", patient_id, e, exc_info=True)
+                failed.append(patient_id)
+
+        if failed:
+            logger.warning("=== Run complete. %d patient(s) failed: %s ===", len(failed), failed)
+        else:
+            logger.info("=== Run complete. All %d patients succeeded ===", len(patient_ids))
 
     def _validation_summary(self, attempts: list) -> dict:
         passed = sum(1 for a in attempts if a["passed"])
