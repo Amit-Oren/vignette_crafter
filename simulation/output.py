@@ -49,7 +49,7 @@ def write_json(output: dict, f):
 def write_summary_json(output: dict, path):
     """Write a compact summary JSON: config, demographics, all self-report fields, vignette."""
     summary = {
-        "patient_id":        output["patient_id"],
+        "persona_id":        output["persona_id"],
         "timestamp":         output["experiment_timestamp"],
         "config":            output.get("config", {}),
         "demographics":      output.get("demographics", {}),
@@ -72,7 +72,7 @@ def write_txt(output: dict, path):
     with open(path, "w", encoding="utf-8") as f:
 
         # ── Header ──────────────────────────────────────────────────────────
-        f.write(f"PATIENT {output['patient_id']}  |  {output['experiment_timestamp']}\n")
+        f.write(f"PERSONA {output['persona_id']}  |  {output['experiment_timestamp']}\n")
         f.write(SEP + "\n")
 
         # ── Config ──────────────────────────────────────────────────────────
@@ -94,36 +94,19 @@ def write_txt(output: dict, path):
 
         # ── Self-report ──────────────────────────────────────────
         sr = output.get("self_report", {})
-        _SR_LABELS = {
-            "trigger_items":               "Triggers",
-            "appraisals_items_original":   "Negative Appraisals",
-            "memory_items_original":       "Memory",
-            "threat_items_original":       "Threat",
-            "strategies_items_original":   "Maladaptive Strategies",
-            "avoidance_items_original":    "Avoidance",
-        }
         f.write(section("SELF-REPORT"))
-        for key, val in sr.items():
-            if not val or (isinstance(val, float) and math.isnan(val)):
+        for node, items in sr.items():
+            if not items:
                 continue
-            label = _SR_LABELS.get(key, key.replace("_", " ").title())
-            if isinstance(val, (list, str)) and "|" in str(val):
-                items = [i.strip() for i in str(val).split("|") if i.strip()]
-                f.write(f"  {label}:\n")
-                for item in items:
+            f.write(f"  {node}:\n")
+            for item in items:
+                if isinstance(item, dict) and "key" in item:
+                    f.write(f"    • {item['key']}: {item['value']}\n")
+                else:
                     f.write(f"    • {item}\n")
-            elif isinstance(val, list):
-                f.write(f"  {label}:\n")
-                for item in val:
-                    if isinstance(item, dict) and "key" in item and "value" in item:
-                        f.write(f"    • {item['key']}: {item['value']}\n")
-                    else:
-                        f.write(f"    • {item}\n")
-            else:
-                f.write(f"  {label:<25} {val}\n")
 
         # ── Aggregated edges ─────────────────────────────────────────────────
-        f.write(section("AGGREGATED EMA EDGES"))
+        f.write(section("COGNITIVE MODEL EDGES"))
         for edge, val in output.get("agg_edges", {}).items():
             arrow = edge.replace("--", "→")
             f.write(f"  {arrow:<50} {val:.4f}\n")
@@ -170,11 +153,16 @@ def write_txt(output: dict, path):
             status = "PASS" if attempt["passed"] else "FAIL"
             f.write(f"\n  [{i}] {status}\n")
             f.write(wrap(attempt["vignette"]) + "\n")
-            for v in attempt.get("violations", []):
-                f.write(f"\n    edge:        {v['edge']}\n")
-                f.write(f"    explanation: {v['explanation']}\n")
+            for v in attempt.get("satisfied_edges", []):
+                f.write(f"\n    ✓ edge:        {v['edge']}\n")
+                f.write(f"      explanation: {v['explanation']}\n")
                 if v.get("quote"):
-                    f.write(f"    quote:       \"{v['quote']}\"\n")
+                    f.write(f"      quote:       \"{v['quote']}\"\n")
+            for v in attempt.get("violations", []):
+                f.write(f"\n    ✗ edge:        {v['edge']}\n")
+                f.write(f"      explanation: {v['explanation']}\n")
+                if v.get("quote"):
+                    f.write(f"      quote:       \"{v['quote']}\"\n")
 
         # ── Vignette (final) ─────────────────────────────────────────────────
         f.write(section("VIGNETTE (final)"))

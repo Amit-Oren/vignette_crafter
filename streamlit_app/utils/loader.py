@@ -33,24 +33,24 @@ def get_experiments() -> list[dict]:
     return experiments
 
 
-def get_patients(experiment_dir: Path) -> list[dict]:
+def get_personas(experiment_dir: Path) -> list[dict]:
     """
-    Return patient result files inside *experiment_dir*.
+    Return persona result files inside *experiment_dir*.
 
-    Each item:  {"path": Path, "patient_id": str}
+    Each item:  {"path": Path, "persona_id": str}
     """
-    patients = []
+    personas = []
     for json_file in sorted(experiment_dir.glob("experiment_*.json")):
         if json_file.name.endswith("_summary.json"):
             continue
         m = re.search(r"experiment_(\w+)\.json$", json_file.name)
-        patient_id = m.group(1) if m else json_file.stem
-        patients.append({"path": json_file, "patient_id": patient_id})
-    return patients
+        persona_id = m.group(1) if m else json_file.stem
+        personas.append({"path": json_file, "persona_id": persona_id})
+    return personas
 
 
-def load_patient(json_path: Path) -> dict:
-    """Load and return the patient result JSON as a dict."""
+def load_persona(json_path: Path) -> dict:
+    """Load and return the persona result JSON as a dict."""
     with open(json_path, "r", encoding="utf-8") as fh:
         return json.load(fh)
 
@@ -73,13 +73,16 @@ def load_config() -> dict:
         return yaml.safe_load(fh) or {}
 
 
-def get_context_files(experiment_dir: Path, patient_id: str) -> list[dict]:
+def get_context_files(experiment_dir: Path, persona_id: str) -> list[dict]:
     """
-    Load all per-call context JSON files for *patient_id*.
+    Load all per-call context JSON files for *persona_id*.
 
     Each item:  {"filename": str, "data": dict}
     """
-    context_dir = experiment_dir / "context" / f"patient_{patient_id}"
+    context_dir = experiment_dir / "context" / f"persona_{persona_id}"
+    if not context_dir.exists():
+        # backward compat: old runs used patient_ prefix
+        context_dir = experiment_dir / "context" / f"patient_{persona_id}"
     if not context_dir.exists():
         context_dir = experiment_dir / "context"
     if not context_dir.exists():

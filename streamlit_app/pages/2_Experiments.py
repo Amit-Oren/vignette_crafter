@@ -1,5 +1,5 @@
 """
-2_Experiments.py — browse all past experiment runs and their patients.
+2_Experiments.py — browse all past experiment runs and their personas.
 """
 
 import sys
@@ -12,17 +12,17 @@ if str(_STREAMLIT_APP_DIR) not in sys.path:
 import pandas as pd
 import streamlit as st
 
-from utils.loader import get_experiments, get_patients, load_patient
+from utils.loader import get_experiments, get_personas, load_persona
 
 st.set_page_config(page_title="Experiments", layout="wide")
 st.title("Experiments")
 
 
-def _build_patient_table(experiment_dir: Path) -> pd.DataFrame:
+def _build_persona_table(experiment_dir: Path) -> pd.DataFrame:
     rows = []
-    for p in get_patients(experiment_dir):
+    for p in get_personas(experiment_dir):
         try:
-            data = load_patient(p["path"])
+            data = load_persona(p["path"])
         except Exception:
             continue
 
@@ -31,7 +31,7 @@ def _build_patient_table(experiment_dir: Path) -> pd.DataFrame:
         tu   = data.get("token_usage", {})
 
         rows.append({
-            "Persona ID":       data.get("patient_id", p["patient_id"]),
+            "Persona ID":       data.get("persona_id", p["persona_id"]),
             "Age":              demo.get("age", ""),
             "Gender":           demo.get("gender", ""),
             "Trauma Type":      demo.get("trauma_type", ""),
@@ -42,7 +42,7 @@ def _build_patient_table(experiment_dir: Path) -> pd.DataFrame:
             "Output Tokens":    tu.get("output", ""),
             "Total Tokens":     tu.get("total", ""),
             "_path":            str(p["path"]),
-            "_patient_id":      p["patient_id"],
+            "_persona_id":      p["persona_id"],
         })
     return pd.DataFrame(rows)
 
@@ -53,7 +53,7 @@ if not experiments:
     st.info("No experiments found. Run `python main.py` to generate vignettes.")
     st.stop()
 
-selected_pid = st.session_state.get("patient_id")
+selected_pid = st.session_state.get("persona_id")
 if selected_pid:
     st.success(
         f"Persona **{selected_pid}** is selected — "
@@ -65,12 +65,12 @@ st.markdown(f"Found **{len(experiments)}** experiment(s).")
 for exp in experiments:
     with st.expander(f"**{exp['name']}**  —  {exp['timestamp']}", expanded=False):
 
-        patients_meta = get_patients(exp["path"])
+        personas_meta = get_personas(exp["path"])
         cfg = {}
         models = {}
-        if patients_meta:
+        if personas_meta:
             try:
-                first  = load_patient(patients_meta[0]["path"])
+                first  = load_persona(personas_meta[0]["path"])
                 c      = first.get("config", {})
                 cfg    = {
                     "Pipeline":        c.get("pipeline", ""),
@@ -97,7 +97,7 @@ for exp in experiments:
 
         st.markdown("---")
 
-        df = _build_patient_table(exp["path"])
+        df = _build_persona_table(exp["path"])
         if df.empty:
             st.warning("No persona data found in this experiment.")
             continue
@@ -109,11 +109,11 @@ for exp in experiments:
         st.markdown("**Select a persona:**")
         btn_cols = st.columns(min(len(df), 8))
         for col, (_, row) in zip(btn_cols, df.iterrows()):
-            pid   = row["_patient_id"]
+            pid   = row["_persona_id"]
             ppath = row["_path"]
             if col.button(f"Persona {pid}", key=f"sel_{exp['name']}_{pid}"):
-                patient_data = load_patient(Path(ppath))
+                persona_data = load_persona(Path(ppath))
                 st.session_state["experiment_path"] = str(exp["path"])
-                st.session_state["patient_id"]      = pid
-                st.session_state["patient_data"]    = patient_data
+                st.session_state["persona_id"]      = pid
+                st.session_state["persona_data"]    = persona_data
                 st.success(f"Persona **{pid}** selected.")

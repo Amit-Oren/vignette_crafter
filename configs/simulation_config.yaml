@@ -1,28 +1,40 @@
 simulation:
-  num_patients: 46
-  patient_ids: []   # e.g. [23] or [23, 45] — overrides num_patients if set
-  seed: 42
+  num_personas: 10
+  persona_ids: []   # e.g. [23] or [23, 45] — overrides num_personas if set
+  seed: 55
   max_retries: 2
   temperature: 0.7
-  pipeline: vignette_full
-  persona_context: true   # use demographics + self-report in vignette crafter
-  use_formulation: true   # include edges/nodes in vignette crafter (false = demographics only)
+  pipeline: vignette_full   
+  # vignette_mode controls what context the vignette crafter receives:
+  #   full         → demographics + self-report + edges  (default)
+  #   demographics → demographics + self-report, no edges
+  #   no_context   → no demographics, no self-report, no edges
+  vignette_mode: full
   self_report_items: 3    # self-report items selected per active node
+  node_prob: 0.7          # probability each cognitive node is active (0.0–1.0)
+  edge_prob: 0.5          # probability each directed edge between two active nodes is active (0.0–1.0)
+  # persona_source: data/output/vignette_full_20260423_232215   # required when pipeline: vignette_from_persona
 
 models:
-  vignette_crafter: llama3.1-70b
-  validator: llama3.1-70b
-  persona_validator: llama3.1-70b
-  persona_crafter: llama3.1-70b
+  vignette_crafter: claude-sonnet-4-6
+  vignette_validator: claude-sonnet-4-6
+  persona_validator: claude-sonnet-4-6
+  persona_crafter: claude-sonnet-4-6
 
 # ── Available models ──────────────────────────────────────────────────────────
 # OpenAI
 #   gpt-5.4-mini
 #   gpt-5.4
 #
-# Anthropic
-#   claude-3-opus
-#   claude-3-sonnet
+# Anthropic  (requires ANTHROPIC_API_KEY in .env)
+#   claude-opus-4-7
+#   claude-sonnet-4-6
+#   claude-haiku-4-5
+#
+# Gemini  (requires GEMINI_API_KEY in .env)
+#   gemini-2.5-pro
+#   gemini-2.5-flash
+#   gemini-2.0-flash
 #
 # DeepSeek  (requires DEEPSEEK_API_KEY in .env)
 #   llama3.1-70b

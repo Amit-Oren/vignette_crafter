@@ -2,6 +2,7 @@ from pydantic import SecretStr
 from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
 from langchain_community.chat_models import ChatOllama
+from langchain_google_genai import ChatGoogleGenerativeAI
 from configs.config import Config, get_model_provider
 from simulation.open_source_llm import OpenSourceChatModel
 from simulation.deepseek_llm import DeepSeekChatModel
@@ -23,4 +24,7 @@ def build_llm(model_name: str, temperature: float = 0.7):
         return DeepSeekChatModel(model=model_name, temperature=temperature,
                                  api_key=SecretStr(Config.DEEPSEEK_API_KEY),
                                  base_url="https://api.deepseek.com")
+    if provider == "gemini":
+        return ChatGoogleGenerativeAI(model=model_name, temperature=temperature,
+                                      google_api_key=SecretStr(Config.GEMINI_API_KEY or ""))
     raise ValueError(f"Unknown provider for model '{model_name}'. Add it to configs/config.py.")

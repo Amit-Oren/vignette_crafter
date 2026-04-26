@@ -10,7 +10,7 @@ if str(_STREAMLIT_APP_DIR) not in sys.path:
     sys.path.insert(0, str(_STREAMLIT_APP_DIR))
 
 import streamlit as st
-from utils.loader import get_experiments, get_patients
+from utils.loader import get_experiments, get_personas
 
 st.set_page_config(
     page_title="Vignette Crafter",
@@ -119,11 +119,11 @@ st.divider()
 # ── Stats ──────────────────────────────────────────────────────────────────
 
 experiments   = get_experiments()
-total_patients = sum(len(get_patients(e["path"])) for e in experiments)
+total_personas = sum(len(get_personas(e["path"])) for e in experiments)
 
 c1, c2 = st.columns(2)
 c1.metric("Experiments run", len(experiments))
-c2.metric("Vignettes generated", total_patients)
+c2.metric("Vignettes generated", total_personas)
 
 st.divider()
 
@@ -146,7 +146,7 @@ if experiments:
     st.divider()
     st.subheader("Recent experiments")
     for exp in experiments[:5]:
-        n = len(get_patients(exp["path"]))
+        n = len(get_personas(exp["path"]))
         st.markdown(f"- **{exp['name']}** — {n} vignette(s)")
 else:
     st.info("No experiments found yet. Run `python main.py` to generate your first vignette.")

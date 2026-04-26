@@ -17,14 +17,14 @@ from components.sidebar import render_sidebar_selector
 st.set_page_config(page_title="Vignette Analysis", layout="wide")
 st.title("Vignette Analysis")
 
-experiment_dir, patient_data = render_sidebar_selector()
+experiment_dir, persona_data = render_sidebar_selector()
 
-if patient_data is None:
+if persona_data is None:
     st.info("Select an experiment and persona from the sidebar to begin.")
     st.stop()
 
-patient_id = patient_data.get("patient_id", "?")
-st.subheader(f"Persona {patient_id}")
+persona_id = persona_data.get("persona_id", "?")
+st.subheader(f"Persona {persona_id}")
 
 st.divider()
 

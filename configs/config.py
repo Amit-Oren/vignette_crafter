@@ -15,6 +15,9 @@ class Config:
     # Anthropic
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 
+    # Gemini
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
     # Ollama
     OLLAMA_IP = os.getenv("OLLAMA_IP", "localhost")
     OLLAMA_PORT = os.getenv("OLLAMA_PORT", "11434")
@@ -38,8 +41,16 @@ MODELS = {
     "gpt-5.4": "openai",
 
     # Anthropic
-    "claude-3-opus": "anthropic",
-    "claude-3-sonnet": "anthropic",
+    "claude-opus-4-5":          "anthropic",
+    "claude-sonnet-4-5":        "anthropic",
+    "claude-haiku-4-5":         "anthropic",
+    "claude-opus-4-7":          "anthropic",
+    "claude-sonnet-4-6":        "anthropic",
+
+    # Gemini
+    "gemini-2.0-flash":       "gemini",
+    "gemini-2.5-flash":       "gemini",
+    "gemini-2.5-pro":         "gemini",
 
     # Lab API (Tailscale)
     "llama3.1-8b":  "open_source",

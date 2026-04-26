@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class FieldIssue(BaseModel):
-    field:       str  # one of: age, gender, nationality, relationship_status, trauma_type, pcl5
+    field:       str  # one of: age, gender, ethnicity, relationship_status, trauma_type, pcl5
     explanation: str  # one sentence explaining why it was flagged
 
 
@@ -48,10 +48,7 @@ class PersonaValidatorAgent(BaseAgent):
     def _run_validation(self, system_prompt: str, user_prompt: str, schema):
         """Invoke structured validation and log the response. Returns parsed result or None."""
         self.system_prompt = system_prompt
-        result = self._invoke_structured(schema, system_prompt, user_prompt)
-        if result is not None:
-            self.log_response(user_prompt, result.model_dump_json(indent=2), output=result.model_dump())
-        return result
+        return self._invoke_structured(schema, system_prompt, user_prompt)
 
     def validate_demographics(self, demographics: dict) -> dict:
         """Check internal consistency of demographics (age/relationship/trauma type).
@@ -74,12 +71,21 @@ class PersonaValidatorAgent(BaseAgent):
                     ", ".join(f"{i['field']}: {i['explanation']}" for i in issues) or "no issues")
         return {"passed": passed, "issues": issues, "problematic_fields": problematic_fields}
 
-    def validate_self_report(self, demographics: dict, self_report: dict) -> dict:
-        """Check that self-report items are coherent with demographics and trauma type.
+    def validate_self_report(self, demographics: dict, agg_edges: dict, self_report: dict) -> dict:
+        """Check that self-report items are coherent with demographics, cognitive model, and trauma type.
         Returns {"passed": bool, "issues": [...], "problematic_items": {node: [bad_keys]}}.
         """
+        active  = "\n".join(f"  - {p} → {c} (strength: {w:.2f})"
+                            for (p, c), w in agg_edges.items() if w > 0)
+        inactive = "\n".join(f"  - {p} → {c}"
+                             for (p, c), w in agg_edges.items() if w == 0)
+        cognitive_model_str = (
+            f"Active edges:\n{active or '  (none)'}\n\n"
+            f"Inactive edges:\n{inactive or '  (none)'}"
+        )
         user_prompt = PERSONA_VALIDATOR_SELFREPORT_USER_PROMPT.format(
             demographics=self.fmt_demographics(demographics),
+            cognitive_model=cognitive_model_str,
             self_report=self.fmt_self_report(self_report),
         )
         result: SelfReportValidationResult = self._run_validation(

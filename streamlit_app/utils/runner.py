@@ -18,8 +18,8 @@ def build_args(config: dict) -> list[str]:
 
     Recognised keys
     ---------------
-    patients      list[int|str]  — explicit patient IDs (mutually exclusive with num_patients)
-    num_patients  int            — number of patients to simulate
+    personas      list[int|str]  — explicit persona IDs (mutually exclusive with num_personas)
+    num_personas  int            — number of personas to simulate
     turns         int            — number of conversation turns
     seed          int            — random seed
     temperature   float          — model temperature
@@ -29,13 +29,13 @@ def build_args(config: dict) -> list[str]:
     """
     args: list[str] = []
 
-    # Patient selection — either explicit IDs or a count
-    patients = config.get("patients")
-    if patients:
-        ids = ",".join(str(p) for p in patients)
-        args += ["--patient_ids", ids]
-    elif config.get("num_patients") is not None:
-        args += ["--num_patients", str(config["num_patients"])]
+    # Persona selection — either explicit IDs or a count
+    personas = config.get("personas")
+    if personas:
+        ids = ",".join(str(p) for p in personas)
+        args += ["--persona_ids", ids]
+    elif config.get("num_personas") is not None:
+        args += ["--num_personas", str(config["num_personas"])]
 
     if config.get("turns") is not None:
         args += ["--num_turns", str(config["turns"])]

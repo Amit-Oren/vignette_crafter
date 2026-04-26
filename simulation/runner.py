@@ -4,81 +4,87 @@ import numpy as np
 from datetime import datetime
 from pathlib import Path
 from agents.base_agent import set_context_subdir, reset_run_tokens, get_run_tokens
-from agents.validator_agent import ValidatorAgent
-from data.input.input import get_available_ids
+from agents.vignette_validator_agent import VignetteValidatorAgent
 from simulation.factory import build_llm
 from simulation.output import to_serializable, write_json, write_txt
 from simulation.pipelines import PIPELINES
-from simulation.steps import step_persona, step_validate_persona, step_zero_shot, step_craft_persona
+from simulation.steps import step_persona, step_validate_persona, step_zero_shot, step_craft_persona, step_load_persona
 
 logger = logging.getLogger(__name__)
 
 
 class SimulationRunner:
-    def __init__(self, num_patients: int, seed: int,
+    def __init__(self, num_personas: int, seed: int,
                  models: dict,
                  experiment_dir: Path,
-                 patient_ids: list = None,
+                 persona_ids: list = None,
                  max_retries: int = 2, temperature: float = 0.7,
                  pipeline: str = "vignette", persona_context: bool = False,
-                 use_formulation: bool = True, n_items: int = 3):
-        self.num_patients    = num_patients
+                 use_formulation: bool = True, n_items: int = 3, node_prob: float = 0.7,
+                 edge_prob: float = 0.5, persona_source: str = None):
+        self.num_personas    = num_personas
         self.seed            = seed
-        self.patient_ids     = patient_ids
+        self.persona_ids     = persona_ids
         self.max_retries     = max_retries
         self.n_items         = n_items
+        self.node_prob       = node_prob
+        self.edge_prob       = edge_prob
         self.use_formulation = use_formulation
-        self.experiment_dir = experiment_dir
-        self.pipeline_name  = pipeline
-        self.pipeline       = PIPELINES[pipeline]
+        self.persona_source  = persona_source
+        self.experiment_dir  = experiment_dir
+        self.pipeline_name   = pipeline
+        self.pipeline        = PIPELINES[pipeline]
         self.persona_context = persona_context
-        self.models         = models
-        self.temperature    = temperature
+        self.models          = models
+        self.temperature     = temperature
         np.random.seed(seed)
         random.seed(seed)
         self._llms = {role: build_llm(model_name, temperature) for role, model_name in models.items()}
 
-    def _sample_patients(self) -> list:
-        available = get_available_ids()
-        return list(np.random.choice(available, size=self.num_patients, replace=False))
+    def _sample_personas(self) -> list:
+        return list(range(1, self.num_personas + 1))
 
     def run(self):
-        patient_ids = self.patient_ids if self.patient_ids else self._sample_patients()
+        persona_ids = self.persona_ids if self.persona_ids else self._sample_personas()
 
         failed = []
-        for patient_id in patient_ids:
-            label = f"Client_{patient_id}"
-            logger.info("=== Patient %s starting ===", patient_id)
-            set_context_subdir(f"patient_{patient_id}")
+        for persona_id in persona_ids:
+            label = f"Persona_{persona_id}"
+            logger.info("=== Persona %s starting ===", persona_id)
+            set_context_subdir(f"persona_{persona_id}")
             reset_run_tokens()
 
             try:
                 state: dict = {}
-                validator = ValidatorAgent(
-                    name=f"{label}_Validator", role="Validator", llm=self._llms["validator"],
+                validator = VignetteValidatorAgent(
+                    name=f"{label}_VignetteValidator", role="VignetteValidator", llm=self._llms["vignette_validator"],
                 )
 
                 for step in self.pipeline:
                     logger.info("[%s] step_%s: starting", label, step)
-                    if step == "craft_persona":
-                        state.update(step_craft_persona(label, patient_id, self._llms, self.max_retries, self.n_items))
+                    if step == "load_persona":
+                        if not self.persona_source:
+                            raise ValueError("pipeline 'vignette_from_persona' requires persona_source in config")
+                        state.update(step_load_persona(label, persona_id, self.persona_source))
+                    elif step == "craft_persona":
+                        state.update(step_craft_persona(label, persona_id, self._llms, self.max_retries, self.n_items, self.node_prob, self.edge_prob))
                     elif step == "persona":
-                        state.update(step_persona(label, patient_id, self._llms, self.persona_context, state, self.use_formulation))
+                        state.update(step_persona(label, persona_id, self._llms, self.persona_context, state, self.use_formulation, self.node_prob, self.edge_prob))
                     elif step == "validate_vignette":
                         state.update(step_validate_persona(label, state, validator, self.max_retries))
                     elif step == "zero_shot":
-                        state.update(step_zero_shot(label, patient_id, self._llms))
+                        state.update(step_zero_shot(label, persona_id, self._llms, self.node_prob, self.edge_prob))
                     logger.info("[%s] step_%s: done", label, step)
 
-                self._save(patient_id, state)
+                self._save(persona_id, state)
             except Exception as e:
-                logger.error("=== Patient %s FAILED: %s — skipping ===", patient_id, e, exc_info=True)
-                failed.append(patient_id)
+                logger.error("=== Persona %s FAILED: %s — skipping ===", persona_id, e, exc_info=True)
+                failed.append(persona_id)
 
         if failed:
-            logger.warning("=== Run complete. %d patient(s) failed: %s ===", len(failed), failed)
+            logger.warning("=== Run complete. %d persona(s) failed: %s ===", len(failed), failed)
         else:
-            logger.info("=== Run complete. All %d patients succeeded ===", len(patient_ids))
+            logger.info("=== Run complete. All %d personas succeeded ===", len(persona_ids))
 
     def _validation_summary(self, attempts: list) -> dict:
         passed = sum(1 for a in attempts if a["passed"])
@@ -87,11 +93,11 @@ class SimulationRunner:
         return {"attempts": len(attempts), "passed": passed, "failed": failed,
                 "ultimately_passed": ultimately_passed}
 
-    def _save(self, patient_id, state: dict):
+    def _save(self, persona_id, state: dict):
         vignette_attempts = state.get("vignette_attempts", [])
 
         output = to_serializable({
-            "patient_id":            patient_id,
+            "persona_id":            persona_id,
             "experiment_timestamp":  datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "config": {
                 "pipeline":    self.pipeline_name,
@@ -100,6 +106,7 @@ class SimulationRunner:
                 "max_retries": self.max_retries,
                 "self_report_items": self.n_items,
                 "use_formulation":   self.use_formulation,
+                "edge_prob":         self.edge_prob,
                 "seed":        self.seed,
             },
             "demographics":               state.get("demographics", {}),
@@ -113,9 +120,9 @@ class SimulationRunner:
             "vignette_attempts":          vignette_attempts,
         })
 
-        base = self.experiment_dir / f"experiment_{patient_id}"
+        base = self.experiment_dir / f"experiment_{persona_id}"
         with open(f"{base}.json", "w", encoding="utf-8") as f:
             write_json(output.copy(), f)
         write_txt(output, f"{base}.txt")
 
-        logger.info("[Client_%s] saved → %s.json / .txt", patient_id, base.name)
+        logger.info("[Persona_%s] saved → %s.json / .txt", persona_id, base.name)

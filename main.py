@@ -34,18 +34,29 @@ def main():
     setup_logging(experiment_dir)
     set_experiment_dir(experiment_dir)
 
+    _MODE_FLAGS = {
+        "full":         {"persona_context": True,  "use_formulation": True},
+        "demographics": {"persona_context": True,  "use_formulation": False},
+        "no_context":   {"persona_context": False, "use_formulation": False},
+    }
+    vignette_mode = sim.get("vignette_mode", "full")
+    flags = _MODE_FLAGS.get(vignette_mode, _MODE_FLAGS["full"])
+
     runner = SimulationRunner(
-        num_patients    = sim["num_patients"],
-        patient_ids     = sim.get("patient_ids"),
+        num_personas    = sim["num_personas"],
+        persona_ids     = sim.get("persona_ids"),
         seed            = sim["seed"],
         max_retries     = sim["max_retries"],
         temperature     = sim["temperature"],
         pipeline        = pipeline,
-        persona_context  = sim["persona_context"],
-        use_formulation  = sim["use_formulation"],
+        persona_context  = flags["persona_context"],
+        use_formulation  = flags["use_formulation"],
         n_items          = sim["self_report_items"],
+        node_prob        = sim.get("node_prob", 0.7),
+        edge_prob        = sim.get("edge_prob", 0.5),
         models          = models,
         experiment_dir  = experiment_dir,
+        persona_source  = sim.get("persona_source"),
     )
     runner.run()
 

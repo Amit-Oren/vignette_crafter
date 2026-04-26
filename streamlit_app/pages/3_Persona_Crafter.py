@@ -19,19 +19,20 @@ from components.sidebar import render_sidebar_selector
 st.set_page_config(page_title="Persona Crafter", layout="wide")
 st.title("Persona Crafter")
 
-experiment_dir, patient_data = render_sidebar_selector()
+experiment_dir, persona_data = render_sidebar_selector()
 
-if patient_data is None:
+if persona_data is None:
     st.info("Select an experiment and persona from the sidebar to begin.")
     st.stop()
 
-demo        = patient_data.get("demographics", {})
-self_report = patient_data.get("self_report", {})
-agg_edges   = patient_data.get("agg_edges", {})
-patient_id  = patient_data.get("patient_id", "?")
-iv_attempts = patient_data.get("input_validation_attempts", [])
+demo        = persona_data.get("demographics", {})
+self_report = persona_data.get("self_report", {})
+agg_edges   = persona_data.get("agg_edges", {})
+persona_id  = persona_data.get("persona_id", "?")
+demo_val_attempts = persona_data.get("demographics_validation_attempts", [])
+sr_val_attempts   = persona_data.get("selfreport_validation_attempts", [])
 
-st.subheader(f"Persona {patient_id}")
+st.subheader(f"Persona {persona_id}")
 
 # ── Demographics ───────────────────────────────────────────────────────────
 
@@ -40,8 +41,9 @@ st.markdown("#### Demographics")
 demo_fields = [
     ("Age",                 demo.get("age", "N/A")),
     ("Gender",              demo.get("gender", "N/A")),
-    ("Nationality",         demo.get("nationality", "N/A")),
+    ("Ethnicity",           demo.get("ethnicity", "N/A")),
     ("Relationship Status", demo.get("relationship_status", "N/A")),
+    ("Occupation",          demo.get("occupation", "N/A")),
     ("Trauma Type",         demo.get("trauma_type", "N/A")),
     ("PCL-5",               demo.get("pcl5", "N/A")),
 ]
@@ -72,10 +74,10 @@ if self_report:
         item_texts = []
         for item in items:
             if isinstance(item, dict):
-                item_texts.append(item.get("key", "") or item.get("value", ""))
+                item_texts.append(f"{item.get('key', '')}: {item.get('value', '')}")
             else:
                 item_texts.append(str(item))
-        rows.append({"Component": node, "Items": ", ".join(item_texts)})
+        rows.append({"Component": node, "Items": "\n".join(item_texts)})
 
     df_sr = pd.DataFrame(rows)
     st.dataframe(df_sr, use_container_width=True, hide_index=True, column_config={
@@ -84,16 +86,29 @@ if self_report:
 else:
     st.info("No self-report data available for this persona.")
 
-# ── Input validation (Persona Crafter LLM check) ───────────────────────────
+# ── Validation attempts ────────────────────────────────────────────────────
 
-if iv_attempts:
+if demo_val_attempts or sr_val_attempts:
     st.divider()
-    st.markdown("#### Persona Crafter Validation")
-    for att in iv_attempts:
-        status = "PASS" if att.get("passed") else "FAIL"
-        icon   = "✅" if att.get("passed") else "❌"
-        with st.expander(f"{icon} Attempt {att.get('attempt', '?')} — {status}", expanded=False):
-            st.markdown(att.get("reasoning", ""))
+    st.markdown("#### Persona Validation")
+
+    if demo_val_attempts:
+        st.markdown("**Demographics**")
+        for att in demo_val_attempts:
+            status = "PASS" if att.get("passed") else "FAIL"
+            icon   = "✅" if att.get("passed") else "❌"
+            with st.expander(f"{icon} Attempt {att.get('attempt', '?')} — {status}", expanded=False):
+                for issue in att.get("issues", []):
+                    st.markdown(f"- **{issue.get('field')}**: {issue.get('explanation')}")
+
+    if sr_val_attempts:
+        st.markdown("**Self-Report**")
+        for att in sr_val_attempts:
+            status = "PASS" if att.get("passed") else "FAIL"
+            icon   = "✅" if att.get("passed") else "❌"
+            with st.expander(f"{icon} Attempt {att.get('attempt', '?')} — {status}", expanded=False):
+                for issue in att.get("issues", []):
+                    st.markdown(f"- **{issue.get('component')} / {issue.get('item')}**: {issue.get('explanation')}")
 
 # ── Cognitive formulation ──────────────────────────────────────────────────
 

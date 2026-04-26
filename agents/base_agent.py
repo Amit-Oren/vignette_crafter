@@ -108,16 +108,22 @@ class BaseAgent(ABC):
     # ── Structured LLM helper ────────────────────────────────────────────────
 
     def _invoke_structured(self, schema, system_prompt: str, user_prompt: str):
-        """Invoke the LLM with a structured output schema. Returns parsed result or None."""
+        """Invoke the LLM with a structured output schema. Logs the call and returns parsed result or None."""
         structured_llm = self.llm.with_structured_output(schema, include_raw=True, method="function_calling")
         raw = structured_llm.invoke([
             {"role": "system", "content": system_prompt},
             {"role": "user",   "content": user_prompt},
         ])
+        parsed = None
+        raw_text = ""
         if isinstance(raw, dict):
             _count(raw.get("raw"))
-            return raw["parsed"]
-        return raw
+            parsed = raw.get("parsed")
+            raw_msg = raw.get("raw")
+            raw_text = getattr(raw_msg, "content", "") if raw_msg else ""
+        output = parsed.model_dump() if parsed is not None else {"parse_error": True}
+        self.log_response(user_prompt, raw_text or "(no raw content)", output=output)
+        return parsed
 
     # ── Shared formatting helpers ─────────────────────────────────────────────
 

@@ -16,7 +16,7 @@ import numpy as np
 import streamlit as st
 import plotly.graph_objects as go
 
-from utils.loader import get_patients, load_patient
+from utils.loader import get_personas, load_persona
 
 # ── Palette for categorical coloring ──────────────────────────────────────
 
@@ -29,16 +29,16 @@ _PALETTE = [
 # ── Data loading ───────────────────────────────────────────────────────────
 
 def load_experiment_vignettes(experiment_dir: Path) -> list[dict]:
-    """Return one record per patient that has a completed vignette."""
+    """Return one record per persona that has a completed vignette."""
     records = []
-    for p in get_patients(experiment_dir):
-        data = load_patient(p["path"])
+    for p in get_personas(experiment_dir):
+        data = load_persona(p["path"])
         vignette = data.get("vignette", "")
         if not vignette:
             continue
         demo = data.get("demographics", {})
         records.append({
-            "patient_id":  data.get("patient_id"),
+            "persona_id":  data.get("persona_id") or p["persona_id"],
             "vignette":    vignette,
             "trauma_type": demo.get("trauma_type", "Unknown"),
             "gender":      demo.get("gender", "Unknown"),
@@ -123,13 +123,13 @@ def build_scatter(
     color_by: str,
 ) -> go.Figure:
     hover_texts = [
-        f"<b>Patient {r['patient_id']}</b>  ·  {r['trauma_type']}<br>"
+        f"<b>Persona {r['persona_id']}</b>  ·  {r['trauma_type']}<br>"
         f"{r['gender']}, {r['age']} y/o  ·  PCL-5: {r['pcl5']}<br>"
         f"<i>Click to read full vignette →</i>"
         for r in records
     ]
-    # customdata carries patient_id so the page can identify clicked points
-    customdata = [[r["patient_id"]] for r in records]
+    # customdata carries persona_id so the page can identify clicked points
+    customdata = [[r["persona_id"]] for r in records]
 
     _continuous = {"pcl5", "age"}
     values = [r[color_by] for r in records]

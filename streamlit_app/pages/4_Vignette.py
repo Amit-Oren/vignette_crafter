@@ -9,6 +9,7 @@ _STREAMLIT_APP_DIR = Path(__file__).parent.parent
 if str(_STREAMLIT_APP_DIR) not in sys.path:
     sys.path.insert(0, str(_STREAMLIT_APP_DIR))
 
+import pandas as pd
 import streamlit as st
 
 from components.sidebar import render_sidebar_selector
@@ -16,18 +17,18 @@ from components.sidebar import render_sidebar_selector
 st.set_page_config(page_title="Vignette", layout="wide")
 st.title("Vignette")
 
-experiment_dir, patient_data = render_sidebar_selector()
+experiment_dir, persona_data = render_sidebar_selector()
 
-if patient_data is None:
+if persona_data is None:
     st.info("Select an experiment and persona from the sidebar to begin.")
     st.stop()
 
-vignette          = patient_data.get("vignette", "")
-vignette_attempts = patient_data.get("vignette_attempts", [])
-val_summary       = patient_data.get("validation_summary", {})
-patient_id        = patient_data.get("patient_id", "?")
+vignette          = persona_data.get("vignette", "")
+vignette_attempts = persona_data.get("vignette_attempts", [])
+val_summary       = persona_data.get("validation_summary", {})
+persona_id        = persona_data.get("persona_id", "?")
 
-st.subheader(f"Persona {patient_id}")
+st.subheader(f"Persona {persona_id}")
 
 # ── Validation summary ─────────────────────────────────────────────────────
 
@@ -86,9 +87,8 @@ if vignette_attempts:
     st.subheader("Validation Attempts")
 
     for i, att in enumerate(vignette_attempts, start=1):
-        passed   = att.get("passed", False)
-        feedback = att.get("feedback") or ""
-        text     = att.get("vignette", "")
+        passed = att.get("passed", False)
+        text   = att.get("vignette", "")
         icon     = "✅" if passed else "❌"
         label    = "PASS" if passed else "FAIL"
         color    = "#2ecc71" if passed else "#e74c3c"
@@ -101,11 +101,42 @@ if vignette_attempts:
                         margin-bottom:12px;">{text}</div>""",
                     unsafe_allow_html=True,
                 )
-            if feedback:
-                st.markdown("**Validator feedback:**")
-                st.markdown(
-                    f"""<div style="background:#fef9e7;border-left:3px solid #f39c12;
-                        padding:14px 20px;font-size:14px;line-height:1.6;border-radius:4px;">
-                        {feedback}</div>""",
-                    unsafe_allow_html=True,
+
+            satisfied  = att.get("satisfied_edges")
+            violations = att.get("violations", [])
+
+            if satisfied is None:
+                st.caption("Edge breakdown not available — re-run to get validator evidence.")
+            elif satisfied or violations or passed:
+                st.markdown("**Edge breakdown:**")
+                if passed and not satisfied and not violations:
+                    st.caption("All edges passed — re-run to see per-edge evidence.")
+                def _status(reason: str) -> str:
+                    return "❌ FAIL" if "Missing" in reason or "Present" in reason else "✅ PASS"
+
+                rows = (
+                    [{"Status": _status(e.get("reason", "Required")),
+                      "Reason": e.get("reason", "Required"),
+                      "Edge": e["edge"],
+                      "Explanation": e.get("explanation", ""), "Quote": e.get("quote", "")}
+                     for e in satisfied]
+                    +
+                    [{"Status": _status(e.get("reason", "Required — Missing")),
+                      "Reason": e.get("reason", "Required — Missing"),
+                      "Edge": e["edge"],
+                      "Explanation": e.get("explanation", ""), "Quote": e.get("quote", "")}
+                     for e in violations]
                 )
+                st.dataframe(
+                    pd.DataFrame(rows),
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Status":      st.column_config.TextColumn(width="small"),
+                        "Reason":      st.column_config.TextColumn(width="medium"),
+                        "Edge":        st.column_config.TextColumn(width="medium"),
+                        "Explanation": st.column_config.TextColumn(width="large"),
+                        "Quote":       st.column_config.TextColumn(width="large"),
+                    },
+                )
+

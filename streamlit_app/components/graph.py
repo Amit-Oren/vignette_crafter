@@ -88,51 +88,56 @@ def render_cognitive_graph(
     )
 
     # ── Edge annotations (directed arrows) ───────────────────────────────
+    import math as _math
+
     annotations = []
     edge_label_traces_x: list[float] = []
     edge_label_traces_y: list[float] = []
     edge_label_texts: list[str] = []
 
+    # Parse all active edges first so we can detect bidirectional pairs
+    active_edges: list[tuple[str, str, float]] = []
     for edge_key, weight in agg_edges.items():
         if weight <= 0:
             continue
-
-        # Parse "Node A -- Node B"  or  "Node A--Node B"
         sep = " -- " if " -- " in edge_key else "--"
         parts = edge_key.split(sep, 1)
         if len(parts) != 2:
             continue
         src_name, tgt_name = parts[0].strip(), parts[1].strip()
-
         if src_name not in node_pos or tgt_name not in node_pos:
             continue
+        active_edges.append((src_name, tgt_name, weight))
 
+    active_pairs = {(s, t) for s, t, _ in active_edges}
+
+    for src_name, tgt_name, weight in active_edges:
         x0, y0 = node_pos[src_name]
         x1, y1 = node_pos[tgt_name]
 
-        # Shorten arrow so it starts/ends at node boundary, not center
-        import math as _math
         dx, dy = x1 - x0, y1 - y0
         dist = _math.hypot(dx, dy) or 1e-9
-        offset = 0.13   # approx node radius in axis units
-        ax = x0 + (dx / dist) * offset
-        ay = y0 + (dy / dist) * offset
-        ex = x1 - (dx / dist) * offset
-        ey = y1 - (dy / dist) * offset
 
-        # Scale arrow width linearly with weight (min 0.5, max 2.5)
+        # Perpendicular unit vector (rotated 90° left)
+        perp_x = -(dy / dist)
+        perp_y =  (dx / dist)
+
+        # If the reverse edge also exists, offset both arrows sideways
+        # so they don't overlap; otherwise draw straight
+        lateral = 0.06 if (tgt_name, src_name) in active_pairs else 0.0
+
+        node_r = 0.13   # approx node radius in axis units
+        ax = x0 + (dx / dist) * node_r + perp_x * lateral
+        ay = y0 + (dy / dist) * node_r + perp_y * lateral
+        ex = x1 - (dx / dist) * node_r + perp_x * lateral
+        ey = y1 - (dy / dist) * node_r + perp_y * lateral
+
         arrow_width = max(0.5, min(2.5, weight * 2.5))
 
         annotations.append(
             dict(
-                ax=ax,
-                ay=ay,
-                axref="x",
-                ayref="y",
-                x=ex,
-                y=ey,
-                xref="x",
-                yref="y",
+                ax=ax, ay=ay, axref="x", ayref="y",
+                x=ex,  y=ey,  xref="x",  yref="y",
                 showarrow=True,
                 arrowhead=2,
                 arrowsize=0.8,
@@ -141,13 +146,11 @@ def render_cognitive_graph(
             )
         )
 
-        # Edge weight label offset perpendicularly from midpoint
-        mx, my = (x0 + x1) / 2, (y0 + y1) / 2
-        perp_x = -(y1 - y0) / dist
-        perp_y =  (x1 - x0) / dist
-        offset_dist = 0.08
-        edge_label_traces_x.append(mx + perp_x * offset_dist)
-        edge_label_traces_y.append(my + perp_y * offset_dist)
+        # Weight label at midpoint, offset perpendicularly
+        mx = (ax + ex) / 2 + perp_x * 0.06
+        my = (ay + ey) / 2 + perp_y * 0.06
+        edge_label_traces_x.append(mx)
+        edge_label_traces_y.append(my)
         edge_label_texts.append(f"{weight:.2f}")
 
     edge_label_trace = go.Scatter(

@@ -1,8 +1,8 @@
 """
-sidebar.py — shared sidebar widget for selecting an experiment and patient.
+sidebar.py — shared sidebar widget for selecting an experiment and persona.
 
 Import and call render_sidebar_selector() at the top of any page that needs
-a patient context.
+a persona context.
 """
 
 import sys
@@ -15,18 +15,18 @@ if str(_STREAMLIT_APP_DIR) not in sys.path:
 
 import streamlit as st
 
-from utils.loader import get_experiments, get_patients, load_patient
+from utils.loader import get_experiments, get_personas, load_persona
 
 
 def render_sidebar_selector() -> tuple:
     """
-    Render experiment and patient selectors in the sidebar.
+    Render experiment and persona selectors in the sidebar.
 
     Returns
     -------
-    (experiment_dir, patient_data)
+    (experiment_dir, persona_data)
         experiment_dir  Path | None
-        patient_data    dict | None
+        persona_data    dict | None
 
     Both are None when no valid selection exists.
     """
@@ -56,34 +56,34 @@ def render_sidebar_selector() -> tuple:
     )
     experiment_dir = next(e["path"] for e in experiments if e["name"] == selected_exp_name)
 
-    # ── Patient selector ───────────────────────────────────────────────────
-    patients = get_patients(experiment_dir)
+    # ── Persona selector ───────────────────────────────────────────────────
+    personas = get_personas(experiment_dir)
 
-    if not patients:
+    if not personas:
         st.sidebar.warning("No personas found in this experiment.")
         return experiment_dir, None
 
-    patient_ids = [p["patient_id"] for p in patients]
+    persona_ids = [p["persona_id"] for p in personas]
 
-    default_pat_index = 0
-    remembered_pid = st.session_state.get("patient_id")
-    if remembered_pid and str(remembered_pid) in patient_ids:
-        default_pat_index = patient_ids.index(str(remembered_pid))
+    default_idx = 0
+    remembered_pid = st.session_state.get("persona_id")
+    if remembered_pid and str(remembered_pid) in persona_ids:
+        default_idx = persona_ids.index(str(remembered_pid))
 
-    selected_patient_id = st.sidebar.selectbox(
+    selected_persona_id = st.sidebar.selectbox(
         "Persona",
-        options=patient_ids,
-        index=default_pat_index,
+        options=persona_ids,
+        index=default_idx,
         format_func=lambda pid: f"Persona {pid}",
-        key="sidebar_patient_select",
+        key="sidebar_persona_select",
     )
 
-    patient_path = next(p["path"] for p in patients if p["patient_id"] == selected_patient_id)
-    patient_data = load_patient(patient_path)
+    persona_path = next(p["path"] for p in personas if p["persona_id"] == selected_persona_id)
+    persona_data = load_persona(persona_path)
 
     # Persist selection in session state so other pages can see it
     st.session_state["experiment_path"] = str(experiment_dir)
-    st.session_state["patient_id"] = selected_patient_id
-    st.session_state["patient_data"] = patient_data
+    st.session_state["persona_id"]      = selected_persona_id
+    st.session_state["persona_data"]    = persona_data
 
-    return experiment_dir, patient_data
+    return experiment_dir, persona_data
